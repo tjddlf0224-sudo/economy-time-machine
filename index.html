@@ -961,9 +961,9 @@
 
         function toggleReady() {
             if (_isReady) {
-                cancelReady();
+                SFX.cancel(); cancelReady();
             } else {
-                setReady(true);
+                SFX.ready(); setReady(true);
             }
         }
 
@@ -1285,6 +1285,87 @@
         });
 
         // ══════════════════════════════════════════
+        // ══════════════════════════════════════════
+        // 🔊 효과음 시스템 (Web Audio API 내장)
+        // ══════════════════════════════════════════
+        const _sfxCtx = (function() {
+            try { return new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+        })();
+
+        function _playTone(opts) {
+            if (!_sfxCtx) return;
+            // resume이 필요한 경우 (브라우저 정책)
+            if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+            const { type='sine', freqs=[440], duration=0.15, vol=0.18, decay=0.1, delay=0 } = opts;
+            freqs.forEach((freq, i) => {
+                const osc  = _sfxCtx.createOscillator();
+                const gain = _sfxCtx.createGain();
+                osc.connect(gain); gain.connect(_sfxCtx.destination);
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, _sfxCtx.currentTime + delay + i * 0.06);
+                gain.gain.setValueAtTime(vol, _sfxCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, _sfxCtx.currentTime + delay + duration + decay);
+                osc.start(_sfxCtx.currentTime + delay);
+                osc.stop(_sfxCtx.currentTime + delay + duration + decay + 0.05);
+            });
+        }
+
+        function _playNoise(duration=0.08, vol=0.12) {
+            if (!_sfxCtx) return;
+            if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+            const buf  = _sfxCtx.createBuffer(1, _sfxCtx.sampleRate * duration, _sfxCtx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const src  = _sfxCtx.createBufferSource();
+            const gain = _sfxCtx.createGain();
+            const filt = _sfxCtx.createBiquadFilter();
+            src.buffer = buf;
+            filt.type = 'bandpass'; filt.frequency.value = 800;
+            src.connect(filt); filt.connect(gain); gain.connect(_sfxCtx.destination);
+            gain.gain.setValueAtTime(vol, _sfxCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, _sfxCtx.currentTime + duration);
+            src.start(); src.stop(_sfxCtx.currentTime + duration + 0.05);
+        }
+
+        const SFX = {
+            // 매수 — 상승하는 두 음
+            buy:     () => _playTone({ type:'triangle', freqs:[330, 440], duration:0.12, vol:0.2, decay:0.12 }),
+            // 매도 — 하강하는 두 음
+            sell:    () => _playTone({ type:'triangle', freqs:[440, 330], duration:0.12, vol:0.2, decay:0.12 }),
+            // 입금/대출 — 동전 소리 느낌
+            cash_in: () => _playTone({ type:'sine', freqs:[660, 880], duration:0.08, vol:0.18, decay:0.08 }),
+            // 출금/상환 — 낮은 톤
+            cash_out:() => _playTone({ type:'sine', freqs:[440, 330], duration:0.08, vol:0.15, decay:0.1 }),
+            // 준비완료 — 체크 소리
+            ready:   () => _playTone({ type:'sine', freqs:[523, 659, 784], duration:0.08, vol:0.18, decay:0.08 }),
+            // 준비완료 취소 — 역방향
+            cancel:  () => _playTone({ type:'sine', freqs:[784, 523], duration:0.1, vol:0.15, decay:0.1 }),
+            // 황금카드 뽑기 — 반짝이는 느낌
+            gacha:   () => _playTone({ type:'sine', freqs:[523,659,784,1047], duration:0.1, vol:0.2, decay:0.06 }),
+            // 카드 선택 — 팡!
+            pick:    () => { _playTone({ type:'triangle', freqs:[880, 1047], duration:0.15, vol:0.22, decay:0.15 }); _playNoise(0.05, 0.1); },
+            // 턴 종료/다음 분기 — 웅장한 느낌
+            turn_end:() => _playTone({ type:'sawtooth', freqs:[220, 330, 440], duration:0.2, vol:0.15, decay:0.3 }),
+            // 랭킹/칭호 획득 — 팡파레
+            fanfare: () => {
+                _playTone({ type:'triangle', freqs:[523], duration:0.15, vol:0.2, decay:0.05, delay:0 });
+                _playTone({ type:'triangle', freqs:[659], duration:0.15, vol:0.2, decay:0.05, delay:0.15 });
+                _playTone({ type:'triangle', freqs:[784, 1047], duration:0.25, vol:0.22, decay:0.2, delay:0.3 });
+            },
+            // 티어업 — 레벨업 효과
+            tier_up: () => {
+                _playTone({ type:'sine', freqs:[523,659,784,1047,1318], duration:0.1, vol:0.2, decay:0.08 });
+            },
+            // 일반 클릭
+            click:   () => _playTone({ type:'sine', freqs:[600], duration:0.05, vol:0.1, decay:0.05 }),
+            // 오류/경고
+            error:   () => _playTone({ type:'sawtooth', freqs:[180, 150], duration:0.15, vol:0.15, decay:0.1 }),
+            // 탑승 시작
+            launch:  () => {
+                _playTone({ type:'sawtooth', freqs:[110,165,220,330,440], duration:0.12, vol:0.18, decay:0.08 });
+            },
+        };
+
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
         async function fetchScenarioAndStart() {
@@ -1362,6 +1443,7 @@
                 if (window._pendingEgg) { window._pendingEgg.action(); showEggToast(window._pendingEgg.msg); window._pendingEgg=null; }
                 initDarkBrokerTurn();
                 initGlitchTurn();
+                SFX.launch();
                 showScreen('game-screen');
                 startBgm();  // 🎵 타임머신 탑승 후 BGM 시작
                 initChart(); initDonutChart();
@@ -1428,7 +1510,7 @@
             }
         }
 
-        function openTeacherModal() {
+        function openTeacherModal() { SFX.click();
             buildTeacherPasswordTable();
             // 이미 설정된 그룹명이 있으면 입력칸에 복원
             if (selectedGroup) {
@@ -1507,6 +1589,7 @@
         }
 
         function processEndTurnLogic() {
+            SFX.turn_end();
             closeTeacherModal();  // 턴 이동 시 교사 패널 자동 닫기
             setReady(false);  // 턴 이동 시 준비완료 자동 해제
             let prevBankRate = currentRates.Bank; let prevDollarRate = currentRates.Dollar; let prevGoldRate = currentRates.Gold;
@@ -1641,16 +1724,16 @@
         // ══════════════════════════════════════════
         // 💳 대출 시스템
         // ══════════════════════════════════════════
-        function takeLoan() {
+        function takeLoan() { SFX.cash_in();
             const amount = parseInt(document.getElementById('inLoan').value) || 0;
-            if (amount <= 0) { alert('1 이상의 금액을 입력해주세요.'); return; }
+            if (amount <= 0) { SFX.error(); alert('1 이상의 금액을 입력해주세요.'); return; }
             if (loanAmount + amount > getLoanMax()) { document.getElementById('loanWarning').style.display='block'; setTimeout(()=>document.getElementById('loanWarning').style.display='none',2500); alert('대출 한도(' + getLoanMax() + '만 원) 초과!'); return; }
             loanAmount += amount; playerCash += amount;
             document.getElementById('inLoan').value = 0; updateUI();
         }
-        function repayLoan() {
+        function repayLoan() { SFX.cash_out();
             const amount = parseInt(document.getElementById('inLoan').value) || 0;
-            if (amount <= 0) { alert('1 이상의 금액을 입력해주세요.'); return; }
+            if (amount <= 0) { SFX.error(); alert('1 이상의 금액을 입력해주세요.'); return; }
             if (amount > loanAmount) { alert('상환액이 대출잔액보다 많습니다.'); return; }
             if (amount > playerCash) { alert('현금이 부족합니다!'); return; }
             loanAmount -= amount; playerCash -= amount;
@@ -1846,7 +1929,7 @@
         // 🃏 황금카드 가챠 시스템
         // ══════════════════════════════════════════
         let _gachaCards=[]; let _gachaPicked=false;
-        function drawGoldenCard() {
+        function drawGoldenCard() { SFX.gacha();
             if (isCardDrawnThisTurn) return;
             const events = goldenCardEvents;
             const reward = events.reward[Math.floor(Math.random()*events.reward.length)];
@@ -1865,7 +1948,7 @@
             document.getElementById('gachaResultBox').style.display='none';
             document.getElementById('gachaOverlay').classList.add('active');
         }
-        function pickGachaCard(idx) {
+        function pickGachaCard(idx) { SFX.pick();
             if (_gachaPicked) return; _gachaPicked=true;
             const card = _gachaCards[idx];
             const el=document.getElementById('gcard-'+idx); el.classList.add('flipped','disabled');
@@ -1901,7 +1984,7 @@
         function stopConfetti() { if(_confettiAnim){cancelAnimationFrame(_confettiAnim);_confettiAnim=null;} const c=document.getElementById('confettiCanvas'); if(c){c.style.display='none';c.getContext('2d').clearRect(0,0,c.width,c.height);} }
         function launchDudEffect() { const el=document.getElementById('dudEffect'); el.style.display='block'; el.classList.remove('active'); void el.offsetWidth; el.classList.add('active'); setTimeout(()=>{el.classList.remove('active');el.style.display='none';},700); }
 
-        function tradeAsset(type, direction) {
+        function tradeAsset(type, direction) { direction > 0 ? SFX.cash_in() : SFX.cash_out();
             if (_isReady) { alert('준비완료 상태에서는 투자할 수 없습니다!'); return; }
             let amount = parseInt(document.getElementById('in'+type).value)||0;
             if(amount<=0){alert("1 이상의 금액을 입력해주세요.");return;}
@@ -1926,14 +2009,14 @@
             let yaxisAnnotations=[]; if(ownedStocks[key]>0){yaxisAnnotations.push({y:avgPrices[key],strokeDashArray:5,borderColor:'#bc13fe',label:{borderColor:'#bc13fe',style:{color:'#fff',background:'#bc13fe',fontWeight:'bold'},text:'평단가: '+avgPrices[key].toFixed(1)}});}
             chartInstance.updateOptions({annotations:{points:pointsAnnotations,yaxis:yaxisAnnotations}}); chartInstance.updateSeries([{data:chartData}]);
         }
-        function buyStock() {
+        function buyStock() { SFX.buy();
             if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
             if(!currentSelectedStock){alert("종목 선택!");return;}
             let qty=parseInt(document.getElementById('tradeQuantity').value);let cost=qty*currentPrices[currentSelectedStock];let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
             if(playerCash>=cost){playerCash-=cost;ownedStocks[currentSelectedStock]+=qty;totalInvested[currentSelectedStock]+=cost;avgPrices[currentSelectedStock]=totalInvested[currentSelectedStock]/ownedStocks[currentSelectedStock];tradeHistory[currentSelectedStock].push({x:dateLabel,type:'B',price:currentPrices[currentSelectedStock]});statsStocksBought[currentSelectedStock]=(statsStocksBought[currentSelectedStock]||0)+1;lastBuyPrice[currentSelectedStock]=currentPrices[currentSelectedStock];tradeThisTurn=true;alert(`${qty}주 매수 완료!`);selectStock(currentSelectedStock,document.getElementById('selectedStockName').innerText);updateUI();}
             else{alert("현금 부족!");}
         }
-        function sellStock() {
+        function sellStock() { SFX.sell();
             if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
             if(!currentSelectedStock){alert("종목 선택!");return;}
             let qty=parseInt(document.getElementById('tradeQuantity').value);let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
@@ -1962,7 +2045,7 @@
             document.getElementById('achName').innerText  = earned ? earned.name : tier.label+' 요원';
             document.getElementById('achDesc').innerText  = earned ? earned.desc : `최종 자산 ${Math.floor(net)}만 원으로 게임을 마쳤습니다.`;
             _pendingAchCallback = callback;
-            document.getElementById('achievementModal').classList.add('active');
+            SFX.fanfare(); document.getElementById('achievementModal').classList.add('active');
         }
         function closeAchievementModal() { document.getElementById('achievementModal').classList.remove('active'); if(_pendingAchCallback){_pendingAchCallback();_pendingAchCallback=null;} }
 
@@ -2012,7 +2095,7 @@
             if(animate && tier.key!==currentTier){ const prev=TIERS.find(t=>t.key===currentTier); const isUp=TIERS.indexOf(tier)>TIERS.indexOf(prev); if(isUp) showTierUp(tier); }
             currentTier=tier.key; badge.className='tier-'+tier.key; badge.id='tierBadge'; badge.innerHTML=tier.icon+' '+tier.label;
         }
-        function showTierUp(tier) { const ov=document.getElementById('tierUpOverlay'); document.getElementById('tierUpText').innerText='TIER UP! '+tier.icon; document.getElementById('tierUpSub').innerText=tier.label+' 요원으로 승격!'; ov.classList.add('active'); setTimeout(()=>ov.classList.remove('active'),2200); }
+        function showTierUp(tier) { SFX.tier_up(); const ov=document.getElementById('tierUpOverlay'); document.getElementById('tierUpText').innerText='TIER UP! '+tier.icon; document.getElementById('tierUpSub').innerText=tier.label+' 요원으로 승격!'; ov.classList.add('active'); setTimeout(()=>ov.classList.remove('active'),2200); }
 
         function updateUI(triggerEffect) {
             document.getElementById('displayCash').innerText=Math.floor(playerCash);
