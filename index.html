@@ -513,13 +513,13 @@
         ══════════════════════════════════════════ */
         .right-panel { position: relative; }
     </style>
-    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
 
     <!-- 🎬 인트로 영상 전체화면 오버레이 -->
     <div id="introVideoOverlay">
-        <div id="ytPlayerContainer" style="width:100%;height:100%;background:#000;"></div>
+        <video id="introVideo" src="./intro.mp4" playsinline
+               style="width:100%;height:100%;object-fit:contain;background:#000;"></video>
         <button id="skipBtn" onclick="closeIntroVideo()">SKIP ▶▶</button>
         <div id="videoProgressBar"></div>
     </div>
@@ -1248,42 +1248,38 @@
         }
 
         // ══════════════════════════════════════════
-        // 🎬 인트로 영상
+        // 🎬 인트로 영상 (./intro.mp4)
         // ══════════════════════════════════════════
-        var _ytPlayer = null; var _ytReady = false; var _ytPendingPlay = false;
-        function onYouTubeIframeAPIReady() { _ytReady = true; if (_ytPendingPlay) { _ytPendingPlay = false; _createYTPlayer(); } }
-        function _createYTPlayer() {
-            _ytPlayer = new YT.Player('ytPlayerContainer', {
-                videoId: 'PSyVXQ_42es', width: '100%', height: '100%',
-                playerVars: { autoplay:1, controls:0, rel:0, modestbranding:1, playsinline:1 },
-                events: {
-                    onReady: function(e) { e.target.playVideo(); },
-                    onStateChange: function(e) { if(e.data===YT.PlayerState.ENDED) closeIntroVideo(); if(e.data===YT.PlayerState.PLAYING) startProgressBar(); }
-                }
-            });
-        }
+        var _progressInterval = null;
+
         function openIntroVideo() {
+            const vid = document.getElementById('introVideo');
             document.getElementById('introVideoOverlay').classList.add('active');
             document.getElementById('videoProgressBar').style.width = '0%';
-            if (!_ytReady) { _ytPendingPlay = true; return; }
-            if (!_ytPlayer || typeof _ytPlayer.playVideo !== 'function') { _ytPlayer = null; document.getElementById('ytPlayerContainer').innerHTML = ''; _createYTPlayer(); }
-            else { _ytPlayer.seekTo(0); _ytPlayer.playVideo(); }
-        }
-        var _progressInterval = null;
-        function startProgressBar() {
+            vid.currentTime = 0;
+            vid.play().catch(() => {});
+            // 진행바
             clearInterval(_progressInterval);
             _progressInterval = setInterval(function() {
-                if (!_ytPlayer) return;
-                const dur = _ytPlayer.getDuration(); const cur = _ytPlayer.getCurrentTime();
-                if (dur > 0) document.getElementById('videoProgressBar').style.width = (cur / dur * 100) + '%';
-            }, 500);
+                if (vid.duration > 0)
+                    document.getElementById('videoProgressBar').style.width = (vid.currentTime / vid.duration * 100) + '%';
+            }, 300);
         }
+
         function closeIntroVideo() {
             clearInterval(_progressInterval);
             document.getElementById('videoProgressBar').style.width = '0%';
             document.getElementById('introVideoOverlay').classList.remove('active');
-            if (_ytPlayer) _ytPlayer.pauseVideo();
+            const vid = document.getElementById('introVideo');
+            vid.pause();
         }
+
+        // 영상 끝나면 자동으로 닫기
+        document.addEventListener('DOMContentLoaded', function() {
+            const vid = document.getElementById('introVideo');
+            if (vid) vid.addEventListener('ended', closeIntroVideo);
+        });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') { const ov = document.getElementById('introVideoOverlay'); if (ov.classList.contains('active')) closeIntroVideo(); }
         });
