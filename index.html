@@ -1111,8 +1111,8 @@
         // GAS가 broadcastUnlock / broadcastNextTurn / broadcastGroup 신호를 확인 (학생 측)
         // ★ GAS는 신호를 읽어도 지우지 않음 → 30명 폴링해도 모두 수신 가능
         //    대신 프론트에서 "이미 처리한 신호" 타임스탬프를 기억해 중복 실행 방지
-        let _pollUnlockHandled = false;       // unlock 신호 처리 여부 (프론트 전용)
-        let _pollNextTurnHandledKey = '';     // 처리한 nextTurn 신호의 고유 키 (프론트 전용)
+        let _pollUnlockHandled = false;
+        let _pollNextTurnHandled = false;
         
         async function startUnlockPoll() {
             // 시작 시점의 turnIndex를 기록 — 이미 이 턴에 nextTurn 신호가 있으면 무시
@@ -1140,12 +1140,9 @@
 
                     // nextTurn 신호 — 한 번만 실행 후 GAS 신호 초기화
                     if (data && data.nextTurn) {
-                        const handledKey = selectedStage + '|' + currentTurnIndex;
-                        if (_pollNextTurnHandledKey !== handledKey) {
-                            _pollNextTurnHandledKey = handledKey;
+                        if (!_pollNextTurnHandled) {
+                            _pollNextTurnHandled = true;
                             setReady(false);
-                            
-                            // isFinal 신호면 바로 랭킹, 아니면 일반 턴 진행
                             if (data.isFinal) {
                                 processEndTurnLogicSilent();
                                 showRanking(true);
@@ -1153,6 +1150,8 @@
                                 processEndTurnLogic();
                             }
                         }
+                    } else {
+                        _pollNextTurnHandled = false;  // ← 교사가 다음 신호 보내면 자동 리셋
                     }
                 } catch(e) {}
             }, 6000);
