@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>경제 타임머신 V5.3</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        ::-webkit-scrollbar { display: none; }
+        body { position: fixed; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #0b0c10; color: #c5c6c7; font-family: 'Malgun Gothic', sans-serif; display: flex; justify-content: center; align-items: center; }
+        
+        .screen { display: none; width: 1200px; height: 800px; }
+        .screen.active { display: flex; flex-direction: column; }
+        
+        #login-screen { justify-content: center; align-items: center; text-align: center; }
+        .neon-text { color: #66fcf1; text-shadow: 0 0 10px #45a29e; font-size: 4em; margin-bottom: 20px;}
+        
+        input[type="text"], input[type="number"], select { padding: 12px; font-size: 1.2em; border: 2px solid #66fcf1; background: #1f2833; color: white; border-radius: 5px; outline: none; text-align: center;}
+        select { cursor: pointer; margin-bottom: 20px; font-weight: bold; color: #66fcf1; }
+        
+        button { padding: 12px 25px; font-size: 1.2em; background-color: #1f2833; color: #66fcf1; border: 2px solid #66fcf1; cursor: pointer; border-radius: 5px; transition: 0.3s; font-weight: bold;}
+        button:hover:not(:disabled) { background-color: #66fcf1; color: #0b0c10; }
+        button:disabled { background-color: #555 !important; border-color: #444 !important; color: #888 !important; cursor: not-allowed;}
+        
+        header { border-bottom: 2px solid #45a29e; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-size: 1.3em; font-weight: bold; background-color: #1f2833; border-radius: 10px 10px 0 0;}
+        
+        .progress-container { display: flex; gap: 4px; margin-top: 5px; }
+        .progress-box { width: 15px; height: 15px; background-color: #0b0c10; border: 1px solid #45a29e; border-radius: 3px; }
+        .progress-box.active { background-color: #66fcf1; box-shadow: 0 0 8px #66fcf1; }
+
+        .dashboard { display: flex; flex: 1; padding: 20px 0; gap: 20px; height: 100%;}
+        .panel { flex: 1; background-color: #1f2833; border: 1px solid #45a29e; border-radius: 10px; padding: 25px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;}
+        .panel h3 { color: #66fcf1; margin-top: 0; border-bottom: 1px dashed #45a29e; padding-bottom: 10px; margin-bottom: 10px;}
+        
+        .news-paper-container { background-image: url('news-paper.png'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center top; width: 100%; min-height: 250px; display: flex; align-items: center; justify-content: center; padding: 60px 30px 30px 30px; border-radius: 5px; margin-bottom: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5); background-color: #fff;}
+        #newsText { font-size: 1.4em; line-height: 1.5; color: #111; font-weight: 900; text-align: center; word-break: keep-all; margin: 0; }
+
+        .indicators p { margin: 10px 0; font-size: 1.2em; display: flex; justify-content: space-between;}
+        .highlight { color: #ff4b4b; font-weight: bold; }
+
+        .invest-row { display: flex; justify-content: space-between; align-items: center; background: #0b0c10; padding: 15px; border-radius: 5px;}
+        .asset-info { display: flex; flex-direction: column; }
+        .asset-name { font-size: 1.2em; }
+        .asset-balance { font-size: 0.9em; color: #a4b0be; margin-top: 5px;}
+        .asset-balance strong { color: #66fcf1; }
+        
+        .trade-box { display: flex; gap: 5px; align-items: center; }
+        .trade-box input { width: 80px; text-align: right; }
+        .btn-sm { padding: 8px 12px; font-size: 1em; cursor: pointer; border-radius: 3px; border: none; font-weight: bold;}
+        .btn-buy-sm { background-color: #ff4b4b; color: white; }
+        .btn-sell-sm { background-color: #4b8bff; color: white; }
+
+        .btn-full { width: 100%; margin-top: auto; padding: 15px; font-size: 1.5em; background-color: #bc13fe; border-color: #bc13fe; color: white; border-radius: 10px;}
+        .btn-full:hover { background-color: white; color: #bc13fe; box-shadow: 0 0 15px #bc13fe;}
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background-color: #1f2833; border: 2px solid #66fcf1; border-radius: 10px; width: 1100px; height: 750px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 0 30px #45a29e; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #45a29e; padding-bottom: 15px; margin-bottom: 15px;}
+        
+        .modal-body { display: flex; flex: 1; gap: 20px;}
+        .stock-list { width: 25%; background: #0b0c10; padding: 15px; border-radius: 5px; overflow-y: auto;}
+        .stock-item { padding: 15px 15px; border-bottom: 1px solid #1f2833; cursor: pointer; transition: 0.2s; border-radius: 5px; font-size: 1.2em; display: flex; flex-direction: column;}
+        .stock-item:hover, .stock-item.active { background: #45a29e; color: #0b0c10; font-weight: bold;}
+        .stock-desc { font-size: 0.7em; color: #a4b0be; margin-top: 5px;}
+        .stock-item:hover .stock-desc, .stock-item.active .stock-desc { color: #0b0c10; }
+        
+        .stock-detail { width: 75%; display: flex; flex-direction: column; gap: 15px; position: relative;}
+        .chart-area { background: #fff; border-radius: 5px; padding: 10px; height: 320px; flex: none; position: relative; z-index: 1; overflow: hidden; } 
+        .trade-controls { display: flex; gap: 15px; align-items: center; background: #0b0c10; padding: 20px; border-radius: 5px; font-size: 1.2em; margin-top: auto; position: relative; z-index: 100; }
+        .trade-controls input { width: 100px; text-align: right; }
+        .btn-buy { background-color: #ff4b4b; border-color: #ff4b4b; color: white;}
+        .btn-sell { background-color: #4b8bff; border-color: #4b8bff; color: white;}
+
+        .donut-container { height: 230px; width: 100%; display: flex; justify-content: center; margin-top: 10px;}
+        .card-content { background: linear-gradient(135deg, #ffd700, #daa520); border: 3px solid #fff; border-radius: 15px; width: 450px; padding: 30px; text-align: center; color: #000; box-shadow: 0 0 50px rgba(255, 215, 0, 0.5); position: relative; z-index: 1001;}
+        .card-content h2 { font-size: 2.5em; margin: 0 0 20px 0; text-shadow: 2px 2px 0px #fff; }
+        .card-content p { font-size: 1.2em; font-weight: bold; line-height: 1.6; margin-bottom: 30px; background: rgba(255,255,255,0.85); padding: 15px; border-radius: 10px; white-space: pre-wrap; text-align: left; }
+        .card-content button { width: 100%; background: #0b0c10; color: #ffd700; border: 2px solid #000; font-weight: bold; font-size: 1.5em; padding: 10px;}
+
+        /* ══════════════════════════════════════════
+           🎵 배경음악 컨트롤
+        ══════════════════════════════════════════ */
+        #bgmControl {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(31,40,51,0.9);
+            border: 1px solid #45a29e;
+            border-radius: 20px;
+            padding: 5px 14px 5px 10px;
+            font-size: 0.85em;
+            color: #66fcf1;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        #bgmControl.visible { display: inline-flex; }
+        #bgmControl:hover { background: rgba(69,162,158,0.25); }
+        #bgmControl .bgm-icon { font-size: 1.1em; }
+        #bgmControl .bgm-label { font-size: 0.9em; font-weight: bold; }
+        #bgmVolume {
+            width: 60px; height: 4px;
+            background: #45a29e; border-radius: 2px;
+            outline: none; cursor: pointer;
+            -webkit-appearance: none;
+            border: none; padding: 0;
+        }
+        #bgmVolume::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px; height: 12px;
+            border-radius: 50%; background: #66fcf1;
+            cursor: pointer;
+        }
+
+        /* ══════════════════════════════════════════
+           ✅ 준비완료 시스템
+        ══════════════════════════════════════════ */
+        #readyBanner {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0;
+            background: linear-gradient(135deg, #1a4a00, #2d7a00);
+            border-bottom: 3px solid #66ff44;
+            color: #fff;
+            font-size: 1.2em; font-weight: 900;
+            text-align: center;
+            padding: 14px;
+            z-index: 5000;
+            letter-spacing: 0.05em;
+            box-shadow: 0 0 30px rgba(100,255,50,0.3);
+        }
+        #readyBanner.active { display: block; }
+        #readyBanner span { color: #aaff55; }
+
+        /* 준비완료 오버레이 (투자 불가 시) */
+        #readyLockOverlay {
+            display: none;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 4500;
+            border-radius: 10px;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 14px;
+        }
+        #readyLockOverlay.active { display: flex; }
+        #readyLockOverlay .lock-icon { font-size: 3.5em; }
+        #readyLockOverlay .lock-text { font-size: 1.3em; font-weight: 900; color: #aaff55; text-align: center; }
+
+        /* 교사 패널 준비현황 */
+        .ready-count-box {
+            background: linear-gradient(135deg, #0a2a00, #0d3800);
+            border: 2px solid #66ff44;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ready-count-box .rc-label { color: #aaff55; font-size: 1.1em; font-weight: 900; }
+        .ready-count-box .rc-number { font-size: 2em; font-weight: 900; color: #66ff44; text-shadow: 0 0 12px #44ff22; }
+        #btnBroadcastReady {
+            background: linear-gradient(135deg,#1a5c00,#2d8a00);
+            color: #aaffaa; border-color: #44cc22;
+            font-size: 0.95em; padding: 8px 16px;
+        }
+        #btnBroadcastReady:hover { background: #44cc22; color: #000; }
+
+        /* ══════════════════════════════════════════
+           🃏 황금카드 가챠 시스템
+        ══════════════════════════════════════════ */
+        #gachaOverlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh; z-index: 9000;
+            background: radial-gradient(ellipse at center, #1a1200 0%, #0b0c10 70%);
+            justify-content: center; align-items: center; flex-direction: column;
+            gap: 30px;
+        }
+        #gachaOverlay.active { display: flex; }
+
+        .gacha-title {
+            font-size: 2em; font-weight: 900; color: #ffd700;
+            text-shadow: 0 0 20px #ffd700, 0 0 40px #daa520;
+            letter-spacing: 0.1em; text-align: center;
+            animation: gachaTitlePulse 2s ease-in-out infinite;
+        }
+        @keyframes gachaTitlePulse { 0%,100%{text-shadow:0 0 20px #ffd700} 50%{text-shadow:0 0 40px #fff700, 0 0 80px #ffd700} }
+
+        .gacha-subtitle { color: #a4b0be; font-size: 1.1em; margin-top: -20px; }
+
+        .gacha-cards { display: flex; gap: 30px; justify-content: center; align-items: center; }
+
+        .gacha-card {
+            width: 180px; height: 260px;
+            perspective: 1000px; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .gacha-card:hover:not(.flipped):not(.disabled) { transform: translateY(-12px) scale(1.04); }
+        .gacha-card.disabled { cursor: default; }
+
+        .gacha-card-inner {
+            position: relative; width: 100%; height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+        .gacha-card.flipped .gacha-card-inner { transform: rotateY(180deg); }
+
+        .gacha-card-back, .gacha-card-front {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 14px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+
+        .gacha-card-back {
+            background: linear-gradient(135deg, #1a1200, #2d2000);
+            border: 3px solid #b8860b;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 30px rgba(184,134,11,0.15);
+        }
+        .gacha-card-back::before {
+            content: ''; position: absolute; inset: 8px;
+            border: 1px solid rgba(184,134,11,0.4); border-radius: 8px;
+        }
+        .gacha-card-back .card-back-icon { font-size: 3.5em; filter: drop-shadow(0 0 10px #ffd700); animation: cardGlow 2s ease-in-out infinite; }
+        @keyframes cardGlow { 0%,100%{filter:drop-shadow(0 0 8px #ffd700)} 50%{filter:drop-shadow(0 0 20px #fff700)} }
+        .gacha-card-back .card-back-label { color: #b8860b; font-size: 0.75em; font-weight: bold; margin-top: 10px; letter-spacing: 0.1em; text-shadow: 0 0 8px #ffd700; }
+
+        .gacha-card-front { transform: rotateY(180deg); padding: 16px; text-align: center; gap: 10px; }
+        .gacha-card-front .cf-icon { font-size: 2.8em; }
+        .gacha-card-front .cf-type { font-size: 0.7em; font-weight: 900; padding: 3px 10px; border-radius: 10px; letter-spacing: 0.08em; }
+        .gacha-card-front .cf-title { font-size: 1em; font-weight: 900; line-height: 1.3; }
+        .gacha-card-front .cf-desc { font-size: 0.72em; line-height: 1.4; opacity: 0.9; }
+
+        .gacha-card-front.type-reward { background: linear-gradient(160deg, #2d1f00, #1a1200); border: 3px solid #ffd700; box-shadow: 0 0 30px rgba(255,215,0,0.4); color: #fff; }
+        .gacha-card-front.type-reward .cf-type { background:#ffd700; color:#000; }
+        .gacha-card-front.type-reward .cf-title { color: #ffd700; }
+        .gacha-card-front.type-info { background: linear-gradient(160deg, #001a1a, #001212); border: 3px solid #66fcf1; box-shadow: 0 0 30px rgba(102,252,241,0.3); color: #fff; }
+        .gacha-card-front.type-info .cf-type { background:#66fcf1; color:#000; }
+        .gacha-card-front.type-info .cf-title { color: #66fcf1; }
+        .gacha-card-front.type-dud { background: linear-gradient(160deg, #1a0000, #0d0000); border: 3px solid #ff4b4b; box-shadow: 0 0 20px rgba(255,75,75,0.3); color: #fff; }
+        .gacha-card-front.type-dud .cf-type { background:#ff4b4b; color:#fff; }
+        .gacha-card-front.type-dud .cf-title { color: #ff4b4b; }
+
+        #gachaResultBox { display: none; text-align: center; animation: resultFadeIn 0.5s ease; }
+        @keyframes resultFadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        #gachaResultText { font-size: 1.4em; font-weight: 900; padding: 12px 30px; border-radius: 8px; margin-bottom: 14px; }
+        #gachaCloseBtn { padding: 12px 40px; font-size: 1.1em; font-weight: 900; border-radius: 8px; border: 2px solid #ffd700; background: transparent; color: #ffd700; cursor: pointer; transition: 0.2s; }
+        #gachaCloseBtn:hover { background: #ffd700; color: #000; }
+
+        #confettiCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9001; display: none; }
+        #dudEffect { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9001; background: rgba(100,0,0,0); }
+        #dudEffect.active { animation: dudFlash 0.6s ease-out; }
+        @keyframes dudFlash { 0%{background:rgba(100,0,0,0.4)} 100%{background:rgba(100,0,0,0)} }
+        
+        /* ══════════════════════════════════════════
+           🏆 랭킹 화면
+        ══════════════════════════════════════════ */
+        #ranking-screen { justify-content: center; align-items: center; text-align: center; }
+        .ranking-board { width: 860px; background-color: #1f2833; border: 2px solid #bc13fe; border-radius: 10px; padding: 20px; box-shadow: 0 0 30px #bc13fe; height: 520px; overflow-y: auto;}
+        table { width: 100%; border-collapse: collapse; margin-top: 10px;}
+        th, td { padding: 13px; border-bottom: 1px solid #45a29e; text-align: center; font-size: 1.1em;}
+        th { color: #66fcf1; background-color: #0b0c10; position: sticky; top: 0; z-index: 1;}
+        tr:hover td { background-color: #45a29e; color: #0b0c10; }
+        .my-record td { color: #ff4b4b; font-weight: bold; }
+        .my-record td { text-shadow: 0 0 5px #ff4b4b; }
+
+        /* 랭킹 계급 배지 (소형) */
+        .rank-tier-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 10px; border-radius: 12px;
+            font-size: 0.82em; font-weight: 900;
+        }
+        .rank-tier-bronze   { background: linear-gradient(135deg,#6b3a1f,#cd7f32); color:#fff; }
+        .rank-tier-silver   { background: linear-gradient(135deg,#555,#c0c0c0); color:#fff; }
+        .rank-tier-gold     { background: linear-gradient(135deg,#b8860b,#ffd700); color:#000; }
+        .rank-tier-platinum { background: linear-gradient(135deg,#0a7a7a,#66fcf1); color:#000; }
+        .rank-tier-diamond  { background: linear-gradient(135deg,#1a0070,#a78bfa); color:#fff; }
+        .rank-tier-legend   { background: linear-gradient(135deg,#7c0000,#ff4b4b,#ffd700); color:#fff; animation: legendPulseSm 1.5s infinite; }
+        @keyframes legendPulseSm { 0%,100%{box-shadow:0 0 8px #ff4b4b80} 50%{box-shadow:0 0 16px #ffd70080} }
+
+        .btn-teacher { background-color: #ffd700; color: #000; border: none; font-size: 0.9em; padding: 8px 15px; border-radius: 5px; cursor: pointer; display: none; margin-right: 15px; box-shadow: 0 0 10px #ffd700;}
+        .btn-teacher:hover { background-color: #fff; }
+        #teacherModal .modal-content { width: 680px; height: auto; max-height: 85%; background: #0b0c10; border-color: #ffd700; box-shadow: 0 0 20px #ffd700; overflow-y: auto; }
+        .pw-table th, .pw-table td { border: 1px solid #45a29e; padding: 10px; text-align: center; }
+        .pw-highlight { color: #ff4b4b; font-weight: bold; font-size: 1.3em; }
+        @keyframes pwPulse { 0%,100% { text-shadow: 0 0 8px #88ff00; } 50% { text-shadow: 0 0 24px #ccff00, 0 0 40px #88ff00; } }
+
+        /* 최종 암호 강조 */
+        .final-pw-row { background: linear-gradient(90deg, #1a0a2a, #0d0015) !important; border-left: 4px solid #bc13fe !important; }
+        .final-pw-highlight { color: #bc13fe !important; font-size: 1.8em !important; font-weight: 900 !important; text-shadow: 0 0 16px #bc13fe !important; animation: finalPwPulse 1s infinite !important; }
+        @keyframes finalPwPulse { 0%,100%{text-shadow:0 0 8px #bc13fe} 50%{text-shadow:0 0 30px #ff00ff, 0 0 50px #bc13fe} }
+
+        /* ══════════════════════════════════════════
+           🔥 연속 수익 스트릭
+        ══════════════════════════════════════════ */
+        #streakBadge {
+            display: none; align-items: center; gap: 5px;
+            background: linear-gradient(135deg, #ff6b00, #ff4b00);
+            color: #fff; font-size: 0.85em; font-weight: 900;
+            padding: 4px 12px; border-radius: 20px; border: 1px solid #ff8c00;
+            box-shadow: 0 0 12px rgba(255,100,0,0.5);
+            animation: streakPulse 1.5s ease-in-out infinite;
+            white-space: nowrap;
+        }
+        #streakBadge.active { display: inline-flex; }
+        @keyframes streakPulse { 0%,100% { box-shadow: 0 0 8px rgba(255,100,0,0.4); } 50% { box-shadow: 0 0 20px rgba(255,150,0,0.8); } }
+
+        #streakPopup { display: none; position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 8000; pointer-events: none; animation: streakDrop 0.4s cubic-bezier(0.22,1,0.36,1); }
+        #streakPopup.active { display: block; }
+        @keyframes streakDrop { from{opacity:0;top:60px} to{opacity:1;top:90px} }
+        #streakPopup .sp-inner { background: linear-gradient(135deg, #1a0800, #2d1200); border: 2px solid #ff6b00; border-radius: 10px; padding: 12px 28px; text-align: center; box-shadow: 0 0 30px rgba(255,100,0,0.5); }
+        #streakPopup .sp-inner .sp-title { font-size: 1.4em; font-weight: 900; color: #ff8c00; }
+        #streakPopup .sp-inner .sp-sub   { font-size: 0.9em; color: #ffcc88; margin-top: 2px; }
+
+        /* ══════════════════════════════════════════
+           📓 투자 일지
+        ══════════════════════════════════════════ */
+        #journalModal .modal-content { width: 700px; height: 680px; background: #1f2833; border-color: #45a29e; }
+        .journal-entry { background: #0b0c10; border-radius: 6px; padding: 12px 15px; border-left: 3px solid #45a29e; font-size: 0.95em; line-height: 1.5; }
+        .journal-entry .je-turn { color: #66fcf1; font-weight: bold; font-size: 0.85em; margin-bottom: 4px; }
+        .journal-entry .je-note { color: #c5c6c7; }
+        .journal-entry .je-profit { font-size: 0.85em; margin-top: 5px; }
+        #journalInput { width: 100%; background: #0b0c10; border: 1px solid #45a29e; color: #fff; border-radius: 6px; padding: 10px; font-size: 1em; resize: none; font-family: 'Malgun Gothic', sans-serif; outline: none; }
+        #journalInput:focus { border-color: #66fcf1; }
+
+        /* ══════════════════════════════════════════
+           ⚡ 타임머신 고장 이벤트
+        ══════════════════════════════════════════ */
+        #glitchOverlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index: 9100; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; flex-direction: column; gap: 20px; }
+        #glitchOverlay.active { display: flex; }
+        #glitchBox { width: 680px; background: #0a0a0a; border: 2px solid #bc13fe; border-radius: 10px; padding: 36px 40px; text-align: center; box-shadow: 0 0 50px rgba(188,19,254,0.4); animation: glitchAppear 0.3s ease; }
+        @keyframes glitchAppear { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+        .glitch-title { font-size: 1.4em; font-weight: 900; color: #bc13fe; text-shadow: 2px 0 #66fcf1, -2px 0 #ff4b4b; animation: glitchText 0.15s infinite; margin-bottom: 10px; }
+        @keyframes glitchText { 0%,100% { text-shadow: 2px 0 #66fcf1, -2px 0 #ff4b4b; } 33% { text-shadow: -2px 0 #66fcf1, 2px 0 #ff4b4b; } 66% { text-shadow: 0 2px #66fcf1, 0 -2px #ff4b4b; } }
+        .glitch-subtitle { font-size: 1em; color: #a4b0be; margin-bottom: 20px; }
+        #glitchPreview { background: rgba(188,19,254,0.08); border: 1px solid rgba(188,19,254,0.3); border-radius: 8px; padding: 18px 22px; font-size: 1.15em; color: #fff; line-height: 1.6; text-align: left; margin-bottom: 20px; font-style: italic; word-break: keep-all; }
+        #glitchPreview::before { content: '📰 '; font-style: normal; }
+        .glitch-warning { font-size: 0.85em; color: #666; margin-bottom: 16px; }
+        #glitchCountdown { font-size: 2.5em; font-weight: 900; color: #bc13fe; text-shadow: 0 0 20px #bc13fe; }
+
+        /* ══════════════════════════════════════════
+           🏦 대출 시스템
+        ══════════════════════════════════════════ */
+        .loan-row { display: flex; justify-content: space-between; align-items: center; background: #1a0a0a; padding: 15px; border-radius: 5px; border: 1px solid rgba(255,75,75,0.3); }
+        .loan-row .asset-balance strong { color: #ff4b4b; }
+        #loanWarning { display: none; background: rgba(255,0,0,0.12); border: 2px solid #ff4b4b; border-radius: 6px; padding: 7px 12px; color: #ff4b4b; font-size: 0.95em; font-weight: bold; text-align: center; margin-top: 4px; }
+
+        /* ══════════════════════════════════════════
+           💀 파산 경고
+        ══════════════════════════════════════════ */
+        #bankruptcyWarning { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 7500; pointer-events: none; }
+        #bankruptcyWarning.active { display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; box-shadow: inset 0 0 0 6px rgba(255,0,0,0.5); animation: bkBorder 1s ease-in-out infinite; }
+        @keyframes bkBorder { 0%,100%{box-shadow:inset 0 0 0 6px rgba(255,0,0,0.2)} 50%{box-shadow:inset 0 0 0 8px rgba(255,0,0,0.7)} }
+        #bankruptcyWarning .bk-text { background: rgba(160,0,0,0.92); color: #fff; font-size: 1.5em; font-weight: 900; padding: 12px 30px; border-radius: 8px; border: 3px solid #ff4b4b; text-shadow: 0 0 10px #ff0000; box-shadow: 0 0 30px rgba(255,0,0,0.6); animation: bkShake 0.35s infinite; }
+        @keyframes bkShake { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-4px)} 70%{transform:translateX(4px)} }
+
+        /* ══════════════════════════════════════════
+           📡 긴급 속보
+        ══════════════════════════════════════════ */
+        #breakingNewsOverlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 8500; justify-content: center; align-items: center; }
+        #breakingNewsOverlay.active { display: flex; }
+        #breakingNewsBox { width: 760px; background: #0d0d0d; border: 4px solid #ff2222; border-radius: 10px; overflow: hidden; box-shadow: 0 0 60px rgba(255,30,30,0.5); animation: bnPop 0.4s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes bnPop { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+        .bn-ticker { background: #ff2222; color: #fff; font-size: 1em; font-weight: 900; padding: 8px 20px; display: flex; align-items: center; gap: 12px; letter-spacing: 0.08em; }
+        .bn-live { background: #fff; color: #ff2222; padding: 2px 8px; border-radius: 3px; font-size: 0.9em; animation: liveBlink 1s infinite; }
+        @keyframes liveBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        .bn-body { padding: 30px 35px 25px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .bn-icon { font-size: 3.8em; }
+        .bn-headline { font-size: 1.55em; font-weight: 900; color: #fff; text-align: center; line-height: 1.5; word-break: keep-all; }
+        .bn-sub { font-size: 1.05em; color: #aaa; text-align: center; line-height: 1.6; }
+        .bn-btn { background: #ff2222; color: #fff; border: none; font-size: 1.1em; font-weight: 900; padding: 11px 40px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .bn-btn:hover { background: #fff; color: #ff2222; }
+
+        #affordableShares { font-size: 0.95em; color: #66fcf1; margin-left: 8px; font-weight: bold; }
+
+        /* ══════════════════════════════════════════
+           📦 파산 미니게임
+        ══════════════════════════════════════════ */
+        #bankruptcyGame { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index: 9600; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 8px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 8px), linear-gradient(160deg, #c8922a, #a0701a, #c8922a, #8B6010); justify-content: center; align-items: center; flex-direction: column; gap: 20px; }
+        #bankruptcyGame.active { display: flex; }
+        #bgBox { background: rgba(255,240,200,0.92); border: 4px solid #7a5c10; border-radius: 12px; padding: 36px 44px; text-align: center; box-shadow: inset 0 0 30px rgba(100,60,0,0.2), 0 8px 32px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 520px; }
+        #bgTitle { font-size: 1.6em; font-weight: 900; color: #5a3a00; line-height: 1.4; word-break: keep-all; }
+        #bgInstruction { font-size: 1.05em; color: #7a5000; font-weight: bold; }
+        #bgClickZone { width: 260px; height: 140px; background: linear-gradient(135deg, #ff6b00, #ff8c00); border: 4px solid #cc4400; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; cursor: pointer; user-select: none; box-shadow: 0 6px 20px rgba(200,80,0,0.4); transition: transform 0.07s, box-shadow 0.07s; }
+        #bgClickZone:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(200,80,0,0.3); }
+        #bgClickIcon  { font-size: 2.8em; pointer-events: none; }
+        #bgClickLabel { font-size: 1em; font-weight: 900; color: #fff; pointer-events: none; }
+        #bgTimer  { font-size: 2.2em; font-weight: 900; color: #cc2200; }
+        #bgCount  { font-size: 1.1em; color: #5a3a00; font-weight: bold; }
+        #bgResult { display: none; font-size: 1.3em; font-weight: 900; color: #2a6000; background: rgba(100,200,50,0.2); border: 2px solid #4a9000; border-radius: 8px; padding: 10px 20px; }
+        #bgCloseBtn { display: none; padding: 11px 36px; font-size: 1em; font-weight: 900; background: #5a3a00; color: #ffe0a0; border: 2px solid #3a2000; border-radius: 8px; cursor: pointer; }
+        #bgCloseBtn:hover { background: #3a2000; }
+
+        /* ══════════════════════════════════════════
+           💀 어둠의 브로커
+        ══════════════════════════════════════════ */
+        #darkBrokerOverlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:9200; background: rgba(0,0,0,0.92); justify-content: center; align-items: center; }
+        #darkBrokerOverlay.active { display: flex; }
+        #darkBrokerBox { width: 540px; background: linear-gradient(160deg, #0d0d0d, #1a0010); border: 2px solid #6b006b; border-radius: 14px; overflow: hidden; box-shadow: 0 0 60px rgba(160,0,160,0.5), inset 0 0 40px rgba(80,0,80,0.3); animation: brokerAppear 0.5s cubic-bezier(0.22,1,0.36,1); display: flex; flex-direction: column; align-items: center; padding: 40px 36px 32px; gap: 18px; text-align: center; }
+        @keyframes brokerAppear { from { transform: scale(0.8) translateY(30px); opacity:0; } to { transform: scale(1) translateY(0); opacity:1; } }
+        #darkBrokerBox .db-skull { font-size: 4.5em; animation: brokerFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(200,0,200,0.8)); }
+        @keyframes brokerFloat { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+        #darkBrokerBox .db-name { font-size: 1.3em; font-weight: 900; color: #cc44cc; letter-spacing: 0.12em; text-shadow: 0 0 12px #aa00aa; }
+        #darkBrokerBox .db-quote { font-size: 1.05em; color: #ddd; line-height: 1.7; background: rgba(100,0,100,0.2); border: 1px solid rgba(150,0,150,0.3); border-radius: 8px; padding: 14px 18px; font-style: italic; word-break: keep-all; }
+        #darkBrokerBox .db-stake { font-size: 1.15em; color: #ff88ff; font-weight: 900; }
+        .db-buttons { display: flex; gap: 14px; width: 100%; }
+        .db-btn-accept { flex:1; padding: 13px; font-size: 1.05em; font-weight: 900; background: linear-gradient(135deg, #6b006b, #aa00aa); color: #fff; border: 2px solid #cc44cc; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .db-btn-accept:hover { background: #cc44cc; box-shadow: 0 0 20px #aa00aa; }
+        .db-btn-refuse { flex:1; padding: 13px; font-size: 1.05em; font-weight: 900; background: transparent; color: #888; border: 2px solid #444; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .db-btn-refuse:hover { border-color: #888; color: #ccc; }
+        #darkBrokerResult { display:none; flex-direction: column; align-items: center; gap: 16px; }
+        .db-result-icon { font-size: 4em; animation: brokerFloat 2s ease-in-out infinite; }
+        .db-result-text { font-size: 1.4em; font-weight: 900; padding: 12px 28px; border-radius: 8px; }
+        .db-result-text.win  { color: #ffd700; border: 2px solid #ffd700; background: rgba(50,30,0,0.8); }
+        .db-result-text.lose { color: #ff4b4b; border: 2px solid #ff4b4b; background: rgba(50,0,0,0.8); }
+        .db-result-sub { font-size: 1em; color: #aaa; }
+        .db-close-btn { padding: 11px 36px; font-size: 1em; font-weight: 900; background: transparent; color: #888; border: 2px solid #444; border-radius: 8px; cursor: pointer; }
+        .db-close-btn:hover { color: #ccc; border-color: #888; }
+
+        /* ══════════════════════════════════════════
+           🏆 티어 배지
+        ══════════════════════════════════════════ */
+        #tierBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px 4px 10px; border-radius: 20px; font-size: 1em; font-weight: 900; margin-left: 18px; letter-spacing: 0.04em; transition: background 0.4s, color 0.4s, box-shadow 0.4s; }
+        .tier-bronze  { background: linear-gradient(135deg,#6b3a1f,#cd7f32); color:#fff; box-shadow:0 0 10px #cd7f3288; }
+        .tier-silver  { background: linear-gradient(135deg,#555,#c0c0c0); color:#fff; box-shadow:0 0 10px #c0c0c088; }
+        .tier-gold    { background: linear-gradient(135deg,#b8860b,#ffd700); color:#000; box-shadow:0 0 12px #ffd70099; }
+        .tier-platinum{ background: linear-gradient(135deg,#0a7a7a,#66fcf1); color:#000; box-shadow:0 0 14px #66fcf1aa; }
+        .tier-diamond { background: linear-gradient(135deg,#1a0070,#a78bfa); color:#fff; box-shadow:0 0 18px #a78bfacc; }
+        .tier-legend  { background: linear-gradient(135deg,#7c0000,#ff4b4b,#ffd700); color:#fff; box-shadow:0 0 22px #ff4b4bcc; animation: legendPulse 1.5s infinite; }
+        @keyframes legendPulse { 0%,100%{box-shadow:0 0 18px #ff4b4bcc} 50%{box-shadow:0 0 32px #ffd700} }
+
+        #tierUpOverlay { display:none; position:fixed; top:0;left:0;width:100vw;height:100vh; z-index:7000; justify-content:center; align-items:center; background:rgba(0,0,0,0.5); pointer-events:none; }
+        #tierUpOverlay.active { display:flex; }
+        #tierUpBox { text-align:center; animation: tierUpPop 0.5s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes tierUpPop { from{transform:scale(0.3) translateY(-60px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+        #tierUpText { font-size:3.5em; font-weight:900; color:#ffd700; text-shadow:0 0 30px #ffd700,0 0 60px #ff4b4b; }
+        #tierUpSub   { font-size:1.4em; color:#fff; margin-top:10px; }
+
+        /* ══════════════════════════════════════════
+           ⚡ 수익/손실 플래시
+        ══════════════════════════════════════════ */
+        #flashOverlay { display:none; position:fixed; top:0;left:0;width:100vw;height:100vh; z-index:6000; pointer-events:none; }
+        #flashOverlay.flash-profit { display:block; box-shadow: inset 0 0 80px 30px rgba(255,75,75,0.55); animation: flashPulse 0.7s ease-out forwards; }
+        #flashOverlay.flash-loss   { display:block; box-shadow: inset 0 0 80px 30px rgba(75,139,255,0.55); animation: flashPulse 0.7s ease-out forwards; }
+        @keyframes flashPulse { 0%{opacity:1;} 60%{opacity:0.7;} 100%{opacity:0;} }
+
+        /* ══════════════════════════════════════════
+           🎖️ 엔딩 업적 모달
+        ══════════════════════════════════════════ */
+        #achievementModal { display:none; position:fixed; top:0;left:0;width:100vw;height:100vh; background:rgba(0,0,0,0.88); z-index:9500; justify-content:center; align-items:center; }
+        #achievementModal.active { display:flex; }
+        #achievementBox { width:550px; background:#1f2833; border:3px solid #ffd700; border-radius:16px; padding:36px 40px; text-align:center; box-shadow:0 0 60px rgba(255,215,0,0.35); animation: achPop 0.5s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes achPop { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+        #achievementBox .ach-icon  { font-size:4em; margin-bottom:10px; }
+        #achievementBox .ach-title { font-size:2em; font-weight:900; color:#ffd700; text-shadow:0 0 12px #ffd700; margin-bottom:8px; }
+        #achievementBox .ach-name  { font-size:1.5em; font-weight:bold; color:#66fcf1; margin-bottom:16px; }
+        #achievementBox .ach-desc  { font-size:1.1em; color:#c5c6c7; line-height:1.6; background:#0b0c10; padding:16px; border-radius:8px; margin-bottom:24px; }
+        #achievementBox button { background:#ffd700; color:#000; border:none; font-size:1.3em; font-weight:900; padding:12px 0; width:100%; border-radius:8px; cursor:pointer; }
+        #achievementBox button:hover { background:#fff; }
+
+        #eggToast { display:none; position:fixed; bottom:60px; left:50%; transform:translateX(-50%); background:#1f2833; border:2px solid #66fcf1; border-radius:10px; padding:14px 32px; font-size:1.2em; font-weight:bold; color:#66fcf1; z-index:9999; box-shadow:0 0 20px #45a29e; animation: toastIn 0.4s ease; }
+        @keyframes toastIn { from{opacity:0;bottom:30px} to{opacity:1;bottom:60px} }
+
+        /* ══════════════════════════════════════════
+           📰 분기 전환 신문 오버레이
+        ══════════════════════════════════════════ */
+        #newsFlashOverlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.82); z-index: 8000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        #newsFlashOverlay.active { display: flex; }
+        #newsFlashPaper { width: 680px; min-height: 340px; background-image: url('news-paper.png'); background-size: 100% 100%; background-color: #fff; border-radius: 4px; box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 50px 45px 50px; position: relative; transform: translateY(-120px) rotate(-2deg); opacity: 0; transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease; }
+        #newsFlashPaper.dropped { transform: translateY(0) rotate(0deg); opacity: 1; }
+        #newsFlashPaper.hiding { transform: translateY(30px) scale(0.93); opacity: 0; transition: transform 0.35s ease-in, opacity 0.3s ease-in; }
+        #newsFlashHeadline { font-size: 1.55em; font-weight: 900; color: #111; text-align: center; line-height: 1.55; word-break: keep-all; margin: 0 0 28px 0; }
+        #newsFlashTimerBar { position: absolute; bottom: 0; left: 0; height: 5px; width: 100%; background: #ddd; border-radius: 0 0 4px 4px; overflow: hidden; }
+        #newsFlashTimerFill { height: 100%; width: 100%; background: linear-gradient(90deg, #45a29e, #66fcf1); transform-origin: left; transform: scaleX(1); }
+        #newsFlashTimerFill.running { transform: scaleX(0); transition: transform 4s linear; }
+        #newsFlashSkipBtn { background: #1f2833; color: #66fcf1; border: 2px solid #45a29e; border-radius: 6px; padding: 10px 30px; font-size: 1.05em; font-weight: bold; cursor: pointer; transition: background 0.2s, color 0.2s; margin-top: 4px; letter-spacing: 0.04em; }
+        #newsFlashSkipBtn:hover { background: #66fcf1; color: #0b0c10; }
+        #newsFlashBadge { position: absolute; top: 18px; right: 22px; background: #ff4b4b; color: #fff; font-size: 0.82em; font-weight: 900; padding: 4px 12px; border-radius: 3px; letter-spacing: 0.05em; }
+
+        /* ══════════════════════════════════════════
+           🎬 인트로 영상 오버레이
+        ══════════════════════════════════════════ */
+        #introVideoOverlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; justify-content: center; align-items: center; }
+        #introVideoOverlay.active { display: flex; }
+        #introVideo { width: 100%; height: 100%; background: #000; }
+        #skipBtn { position: fixed; bottom: 40px; right: 50px; z-index: 10000; background: rgba(0,0,0,0.6); color: #66fcf1; border: 2px solid #66fcf1; border-radius: 8px; padding: 12px 28px; font-size: 1.1em; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: background 0.2s, color 0.2s; letter-spacing: 0.05em; }
+        #skipBtn:hover { background: #66fcf1; color: #0b0c10; }
+        #videoProgressBar { position: fixed; bottom: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, #45a29e, #66fcf1); z-index: 10001; transition: width 0.3s linear; }
+
+        /* ── 접속 암호 팝업 ── */
+        #accessGate { display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.92); z-index: 99999; justify-content: center; align-items: center; }
+        #accessGate.hidden { display: none; }
+        #accessGateBox { background: #1f2833; border: 2px solid #45a29e; border-radius: 16px; padding: 40px 36px 32px; width: 340px; max-width: 92vw; text-align: center; box-shadow: 0 0 40px rgba(69,162,158,0.35); animation: gateAppear 0.3s ease; }
+        @keyframes gateAppear { from { opacity:0; transform: scale(0.88) translateY(-20px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        #accessGateBox .gate-icon  { font-size: 3em; margin-bottom: 8px; }
+        #accessGateBox .gate-title { font-size: 1.4em; font-weight: 900; color: #66fcf1; margin-bottom: 4px; text-shadow: 0 0 12px #45a29e; }
+        #accessGateBox .gate-sub   { font-size: 0.88em; color: #a4b0be; margin-bottom: 22px; }
+        #accessGateBox input { width: 100%; box-sizing: border-box; padding: 12px 16px; font-size: 1.1em; background: #0b0c10; color: #66fcf1; border: 2px solid #45a29e; border-radius: 8px; text-align: center; letter-spacing: 0.2em; margin-bottom: 14px; outline: none; }
+        #accessGateBox input:focus { border-color: #66fcf1; }
+        #accessGateBox button { width: 100%; padding: 13px; font-size: 1.1em; font-weight: 900; background: linear-gradient(135deg, #45a29e, #1f6b68); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.2s; }
+        #accessGateBox button:hover { opacity: 0.85; }
+        #accessGateBox button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #gateError { color: #ff6b6b; font-size: 0.9em; margin-top: 10px; min-height: 1.2em; }
+
+        #btnIntro { margin-top: 10px; background: transparent; color: #a4b0be; border: 1px dashed #45a29e; font-size: 1em; padding: 10px 28px; border-radius: 5px; cursor: pointer; transition: 0.3s; letter-spacing: 0.05em; }
+        #btnIntro:hover { background: rgba(69,162,158,0.15); color: #66fcf1; border-color: #66fcf1; }
+
+        /* ══════════════════════════════════════════
+           게임 패널 상대위치 (준비완료 오버레이용)
+        ══════════════════════════════════════════ */
+        .right-panel { position: relative; }
+    </style>
+</head>
+<body>
+
+    <!-- 🎬 인트로 영상 전체화면 오버레이 -->
+    <div id="introVideoOverlay">
+        <video id="introVideo" src="./intro.mp4" playsinline
+               style="width:100%;height:100%;object-fit:contain;background:#000;"></video>
+        <button id="skipBtn" onclick="closeIntroVideo()">SKIP ▶▶</button>
+        <div id="videoProgressBar"></div>
+    </div>
+
+    <!-- 🏆 티어업 연출 -->
+    <div id="tierUpOverlay"><div id="tierUpBox"><div id="tierUpText">TIER UP!</div><div id="tierUpSub"></div></div></div>
+    <!-- 🎖️ 엔딩 업적 모달 -->
+    <div id="achievementModal">
+        <div id="achievementBox">
+            <div class="ach-icon" id="achIcon">🎖️</div>
+            <div class="ach-title">엔딩 칭호 획득!</div>
+            <div class="ach-name" id="achName"></div>
+            <div class="ach-desc" id="achDesc"></div>
+            <button onclick="closeAchievementModal()">확인 및 랭킹 보기 🏆</button>
+        </div>
+    </div>
+    <!-- 🥚 이스터에그 토스트 -->
+    <div id="eggToast"></div>
+
+    <!-- 🔥 스트릭 팝업 -->
+    <div id="streakPopup">
+        <div class="sp-inner">
+            <div class="sp-title" id="streakPopupTitle"></div>
+            <div class="sp-sub"  id="streakPopupSub"></div>
+        </div>
+    </div>
+
+    <!-- 📓 투자 일지 모달 -->
+    <div id="journalModal" class="modal-overlay">
+        <div class="modal-content" style="width:700px; height:680px; background:#1f2833; border-color:#45a29e;">
+            <div class="modal-header">
+                <h2 style="margin:0; color:#66fcf1;">📓 나의 투자 일지</h2>
+                <button onclick="closeJournal()" style="border:none;background:transparent;font-size:2em;cursor:pointer;color:white;">❌</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px; flex:1; overflow:hidden;">
+                <div id="journalList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;"></div>
+                <div style="border-top:1px solid #45a29e; padding-top:12px;">
+                    <div style="font-size:0.9em; color:#a4b0be; margin-bottom:6px;">✏️ 이번 분기 메모 남기기</div>
+                    <textarea id="journalInput" rows="3" placeholder="지금 이 분기의 투자 전략이나 생각을 적어봐요..."></textarea>
+                    <button onclick="saveJournalEntry()" style="width:100%; margin-top:8px; padding:10px; background:#45a29e; color:#0b0c10; border:none; border-radius:5px; font-weight:900; font-size:1em; cursor:pointer;">💾 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚡ 타임머신 고장 이벤트 -->
+    <div id="glitchOverlay">
+        <div id="glitchBox">
+            <div class="glitch-title">⚡ 타임머신 오작동!</div>
+            <div class="glitch-subtitle">시공간 균열로 다음 분기 정보가 잠시 노출됩니다...</div>
+            <div id="glitchPreview"></div>
+            <div class="glitch-warning">⚠️ 이 정보는 곧 사라집니다. 잘 기억해두세요!</div>
+            <div id="glitchCountdown">5</div>
+        </div>
+    </div>
+
+    <!-- 💀 파산 경고 -->
+    <div id="bankruptcyWarning"><div class="bk-text">💀 파산 경고! 신용 불량자 전락 위기!</div></div>
+
+    <!-- 📦 파산 미니게임 -->
+    <div id="bankruptcyGame">
+        <div id="bgBox">
+            <div id="bgTitle">💸 파산 위기!<br>구호금을 받아 버텨라!</div>
+            <div id="bgInstruction">10초 안에 최대한 많이 클릭!<br>클릭 1회당 <strong>10만 원</strong> 지급</div>
+            <div id="bgClickZone" onclick="bgClick()">
+                <div id="bgClickIcon">👊</div>
+                <div id="bgClickLabel">여기를 눌러라!</div>
+            </div>
+            <div id="bgTimer">10</div>
+            <div id="bgCount">클릭 횟수: 0회 (+0만 원)</div>
+            <div id="bgResult"></div>
+            <button id="bgCloseBtn" onclick="closeBankruptcyGame()">계속하기</button>
+        </div>
+    </div>
+
+    <!-- 💀 어둠의 브로커 -->
+    <div id="darkBrokerOverlay">
+        <div id="darkBrokerBox">
+            <div class="db-skull">💀</div>
+            <div class="db-name">— 어둠의 브로커 —</div>
+            <div class="db-quote">"가진 현금의 절반을 걸겠나?<br>성공하면 3배로 불려주지.<br>실패하면... 전부 내 차지다."</div>
+            <div class="db-stake" id="dbStakeText"></div>
+            <div class="db-buttons">
+                <button class="db-btn-accept" onclick="darkBrokerAccept()">🤝 거래하겠다</button>
+                <button class="db-btn-refuse" onclick="darkBrokerRefuse()">🚪 물러나겠다</button>
+            </div>
+            <div id="darkBrokerResult">
+                <div class="db-result-icon" id="dbResultIcon"></div>
+                <div class="db-result-text" id="dbResultText"></div>
+                <div class="db-result-sub"  id="dbResultSub"></div>
+                <button class="db-close-btn" onclick="closeDarkBroker()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📡 긴급 속보 -->
+    <div id="breakingNewsOverlay">
+        <div id="breakingNewsBox">
+            <div class="bn-ticker"><span class="bn-live">LIVE</span><span>📡 타임머신 긴급 속보</span></div>
+            <div class="bn-body">
+                <div class="bn-icon" id="bnIcon">📢</div>
+                <div class="bn-headline" id="bnHeadline"></div>
+                <div class="bn-sub" id="bnSub"></div>
+                <button class="bn-btn" onclick="closeBreakingNews()">확인 ✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ 준비완료 배너 -->
+    <div id="readyBanner">✅ 준비완료 상태입니다. <span>투자 조작이 잠금</span>됩니다. 선생님의 안내를 기다려주세요.</div>
+
+    <!-- 📰 분기 전환 신문 오버레이 -->
+    <div id="newsFlashOverlay">
+        <div id="newsFlashPaper">
+            <span id="newsFlashBadge">📰 이번 분기 속보</span>
+            <p id="newsFlashHeadline"></p>
+            <button id="newsFlashSkipBtn" onclick="closeNewsFlash()">다음 분기로 → </button>
+            <div id="newsFlashTimerBar"><div id="newsFlashTimerFill"></div></div>
+        </div>
+    </div>
+
+    <!-- 🔑 접속 암호 팝업 -->
+    <div id="accessGate">
+        <div id="accessGateBox">
+            <div class="gate-icon">🔐</div>
+            <div class="gate-title">접속 암호 확인</div>
+            <div class="gate-sub">수업 시작 전 선생님께 암호를 확인하세요.</div>
+            <input type="password" id="accessCodeInput" placeholder="암호를 입력하세요" autocomplete="off" onkeydown="if(event.key==='Enter') submitAccessCode()">
+            <button id="accessGateBtn" onclick="submitAccessCode()">🚀 입장하기</button>
+            <div id="gateError"></div>
+        </div>
+    </div>
+
+    <div id="login-screen" class="screen active">
+        <h1 class="neon-text">경제 타임머신</h1>
+        <p style="font-size: 1.3em;">역사적인 경제 위기 속으로 타임워프 할 준비를 하십시오.<br><span style="font-size:0.8em; color:#a4b0be;"></span></p>
+        <div style="margin-bottom: 10px;">
+            <button id="btnIntro" onclick="openIntroVideo()">🎬 프롤로그 보기</button>
+        </div>
+        <div style="margin: 20px 0; display: flex; flex-direction: column; align-items: center; gap: 15px;">
+            <input type="text" id="playerName" placeholder="요원 닉네임 입력" autocomplete="off" style="width: 300px;">
+            <select id="stageSelect" style="width: 300px;">
+                <option value="1997">1997년</option>
+                <option value="2008">2008년</option>
+                <option value="2020">2020년</option>
+            </select>
+        </div>
+        <button id="startBtn" onclick="fetchScenarioAndStart()" style="font-size: 1.5em; padding: 15px 40px;">타임머신 탑승 🚀</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <header>
+            <div style="display:flex; flex-direction: column;">
+                <span id="currentTime">🕒 타임워프 준비중...</span>
+                <div id="progressContainer" class="progress-container"></div>
+            </div>
+            
+            <div style="display:flex; gap:10px; align-items: center; flex-wrap: wrap;">
+                <button id="btnTeacherOpen" class="btn-teacher" onclick="openTeacherModal()">👑 교사 전용 패널</button>
+
+                <span style="margin-left:10px;">💰 현금: <span id="displayCash" style="color:#66fcf1;">1000</span>만 원</span>
+                <span style="margin-left:15px;">💎 자산: <strong id="totalNetWorth" style="color:#bc13fe; font-size:1.1em;">1000</strong>만 원 
+                    <span id="totalReturnRate" style="font-size: 0.9em; color: #a4b0be; margin-left: 5px;">(0.0%)</span>
+                </span>
+                <span id="streakBadge">🔥 <span id="streakCount">0</span>연속 수익!</span>
+                <span id="tierBadge" class="tier-bronze">🥉 브론즈</span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="panel left-panel">
+                <h3>📰 이번 분기 경제 뉴스</h3>
+                <div class="news-paper-container"><p id="newsText">수신 중...</p></div>
+                <h3>📊 내 포트폴리오 비중</h3>
+                <div class="donut-container"><canvas id="portfolioChart"></canvas></div>
+                <h3 style="margin-top:20px;">📈 시장 주요 지표</h3>
+                <div class="indicators">
+                    <p><span>🏦 예금 금리</span> <span id="rateBank" class="highlight">0%</span></p>
+                    <p><span>💵 달러 환율</span> <span id="rateDollar" class="highlight">0원</span></p>
+                    <p><span>🪙 금괴(1g)</span> <span id="rateGold" class="highlight">0원</span></p>
+                </div>
+                <button onclick="openJournal()" style="width:100%; padding: 10px; font-weight:bold; background:#1f2833; color:#66fcf1; border:1px solid #45a29e; border-radius:5px; margin-top:8px;">📓 투자 일지 보기</button>
+                <button id="btnGoldenCard" onclick="drawGoldenCard()" style="width:100%; padding: 15px; font-weight: bold; background-color: #ffd700; color: #000; border: 2px solid #daa520; margin-top: 15px; box-shadow: 0 0 15px rgba(255,215,0,0.5);">🃏 황금 카드 뽑기 (이번 분기 1회)</button>
+            </div>
+
+            <div class="panel right-panel">
+                <!-- ✅ 준비완료 잠금 오버레이 -->
+                <div id="readyLockOverlay">
+                    <div class="lock-icon">🔒</div>
+                    <div class="lock-text">준비완료 상태입니다.<br>선생님의 안내를 기다려주세요.</div>
+                    <button onclick="cancelReady()" style="background:rgba(255,255,255,0.1);color:#aaffaa;border:1px solid #66ff44;padding:8px 24px;font-size:0.9em;border-radius:6px;margin-top:8px;">준비완료 취소</button>
+                </div>
+                <h3>💼 투자 배분 콘솔 (만 원 단위)</h3>
+                <div class="invest-row">
+                    <div class="asset-info"><span class="asset-name">🏦 은행 예금</span><span class="asset-balance">잔고: <strong id="valBank">0</strong></span></div>
+                    <div class="trade-box"><input type="number" id="inBank" value="0" min="0"><button class="btn-sm btn-buy-sm" onclick="tradeAsset('Bank', 1)">입금</button><button class="btn-sm btn-sell-sm" onclick="tradeAsset('Bank', -1)">출금</button></div>
+                </div>
+                <div class="invest-row" style="background: #1a2a3a; border: 1px solid #4b8bff; flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="asset-info"><span class="asset-name">📈 기업 주식</span><span class="asset-balance">평가액: <strong id="stockTotalValue" style="color:#4b8bff">0</strong></span></div>
+                        <button onclick="openStockModal()" style="padding: 10px 20px; font-weight:bold; font-size: 1.1em;">📊 거래소</button>
+                    </div>
+                    <div id="stockHoldingsList" style="display:none; border-top:1px dashed rgba(75,139,255,0.3); padding-top:8px; display:flex; flex-direction:column; gap:4px;"></div>
+                </div>
+                <div class="invest-row">
+                    <div class="asset-info"><span class="asset-name">💵 달러 (USD)</span><span class="asset-balance">보유액: <strong id="valDollar">0</strong></span></div>
+                    <div class="trade-box"><input type="number" id="inDollar" value="0" min="0"><button class="btn-sm btn-buy-sm" onclick="tradeAsset('Dollar', 1)">매수</button><button class="btn-sm btn-sell-sm" onclick="tradeAsset('Dollar', -1)">매도</button></div>
+                </div>
+                <div class="invest-row">
+                    <div class="asset-info"><span class="asset-name">🪙 금괴 (Gold)</span><span class="asset-balance">보유액: <strong id="valGold">0</strong></span></div>
+                    <div class="trade-box"><input type="number" id="inGold" value="0" min="0"><button class="btn-sm btn-buy-sm" onclick="tradeAsset('Gold', 1)">매수</button><button class="btn-sm btn-sell-sm" onclick="tradeAsset('Gold', -1)">매도</button></div>
+                </div>
+                <div class="loan-row">
+                    <div class="asset-info">
+                        <span class="asset-name">💳 긴급 대출</span>
+                        <span class="asset-balance">대출잔액: <strong id="valLoan">0</strong>만 원 (분기이자 10%)</span>
+                        <div id="loanWarning">⚠️ 대출 한도(1,000만 원) 초과!</div>
+                    </div>
+                    <div class="trade-box">
+                        <input type="number" id="inLoan" value="0" min="0" style="width:80px;">
+                        <button class="btn-sm btn-buy-sm" onclick="takeLoan()">대출</button>
+                        <button class="btn-sm btn-sell-sm" onclick="repayLoan()">상환</button>
+                    </div>
+                </div>
+                <!-- ✅ 준비완료 버튼 영역 (턴 종료는 교사 패널에서만 가능) -->
+                <div style="display:flex; gap:10px; margin-top:auto;">
+                    <button id="btnReady" onclick="toggleReady()" style="flex:1; padding:15px; font-size:1.1em; background:#1a4a00; color:#aaff55; border:2px solid #44cc22; border-radius:10px;">✅ 준비완료</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 👑 교사 전용 패널 -->
+    <div id="teacherModal" class="modal-overlay">
+        <div class="modal-content" style="padding: 30px;">
+            <div class="modal-header" style="border-bottom-color: #ffd700;">
+                <div style="flex:1;">
+                    <h2 style="margin: 0; color: #ffd700;">👑 교사 전용 패널 (타임워프 암호부)</h2>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                        <span style="color:#a4b0be; font-size:0.9em; white-space:nowrap;">그룹명:</span>
+                        <input type="text" id="groupNameInput" placeholder="예: 3반 1모둠" autocomplete="off"
+                            style="width:160px; font-size:0.9em; padding:5px 10px; border-radius:6px; background:#1f2833; color:#fff; border:1px solid #ffd700;">
+                        <button onclick="applyGroupName()"
+                            style="padding:5px 14px; font-size:0.9em; font-weight:900; background:#ffd700; color:#000; border:none; border-radius:6px; cursor:pointer;">적용</button>
+                        <span style="color:#66fcf1; font-size:0.9em;">현재: <strong id="teacherGroupLabel">미설정</strong></span>
+                    </div>
+                </div>
+                <button onclick="closeTeacherModal()" style="border: none; background: transparent; font-size: 2em; cursor: pointer; color: white;">❌</button>
+            </div>
+
+            <!-- 준비완료 현황 -->
+            <div class="ready-count-box">
+                <div>
+                    <div class="rc-label">✅ 준비완료 학생 현황</div>
+                    <div style="color:#aaffaa; font-size:0.9em; margin-top:4px;" id="readyStudentList">없음</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="rc-number" id="readyCountDisplay">0명</div>
+                    <button id="btnBroadcastReady" onclick="teacherBroadcastUnlock()" style="margin-top:6px;">🔓 전체 잠금 해제</button>
+                </div>
+            </div>
+
+            <!-- 교사 턴 종료 버튼 -->
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button onclick="teacherEndTurn()" style="flex:2; padding:14px 0; font-size:1.05em; font-weight:900; background:#1a3a6a; color:#66fcf1; border:2px solid #45a29e; border-radius:10px; cursor:pointer;">⏭️ 턴 종료 &amp; 다음 분기로</button>
+                <button onclick="teacherResetAllData()" style="flex:1; padding:14px 0; font-size:1em; font-weight:900; background:#3a0a0a; color:#ff6b6b; border:2px solid #cc3333; border-radius:10px; cursor:pointer;">🗑️ 데이터 리셋</button>
+            </div>
+            <div style="color:#a4b0be; font-size:0.8em; margin-top:6px;">💡 준비완료 학생을 확인 후 <strong style="color:#66fcf1;">턴 종료</strong>를 누르면 모든 학생이 다음 분기로 이동합니다. <span style="color:#ff6b6b;">데이터 리셋</span>은 새 게임 시작 전 사용하세요.</div>
+
+            <!-- 🛠️ 강제 턴넘김 -->
+            <div style="margin-top:14px; background:#0d1a0d; border:2px solid #44aa22; border-radius:10px; padding:14px 18px;">
+                <div style="color:#aaff55; font-size:1em; font-weight:900; margin-bottom:10px;">🛠️ 개별 학생 강제 턴넘김</div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <select id="forceStudentSelect" style="flex:2; min-width:120px; font-size:0.95em; padding:7px 10px; background:#1f2833; color:#fff; border:1px solid #44aa22; border-radius:6px;">
+                        <option value="">학생 선택</option>
+                    </select>
+                    <span style="color:#a4b0be; font-size:0.9em; white-space:nowrap;">→ 이동할 분기</span>
+                    <select id="forceTurnInput" style="flex:2; min-width:130px; font-size:0.95em; padding:7px 10px; background:#1f2833; color:#fff; border:1px solid #44aa22; border-radius:6px;">
+                        <option value="">분기 선택</option>
+                    </select>
+                    <button onclick="teacherForceTurn()"
+                        style="padding:7px 18px; font-size:0.95em; font-weight:900; background:#44aa22; color:#000; border:none; border-radius:6px; cursor:pointer; white-space:nowrap;">
+                        강제 이동
+                    </button>
+                    <button onclick="refreshForceStudentList()"
+                        style="padding:7px 12px; font-size:0.9em; background:transparent; color:#66fcf1; border:1px solid #45a29e; border-radius:6px; cursor:pointer; white-space:nowrap;">
+                        🔄 목록 갱신
+                    </button>
+                </div>
+                <div id="forceTurnStatus" style="margin-top:8px; font-size:0.85em; color:#a4b0be;"></div>
+            </div>
+
+            <p style="color: #a4b0be; font-size: 1.05em; margin-bottom: 12px; margin-top:14px;">📋 분기별 암호표</p>
+            <div style="max-height: 380px; overflow-y: auto;">
+                <table class="pw-table" style="width: 100%; border-collapse: collapse;">
+                    <thead><tr><th style="background:#1f2833;">이동할 턴(분기)</th><th style="background:#1f2833;">입력 암호</th></tr></thead>
+                    <tbody id="teacherPasswordList"></tbody>
+                </table>
+            </div>
+
+
+        </div>
+    </div>
+
+    <div id="stockModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin: 0; color: #66fcf1; font-size: 1.8em;">📈 타임머신 증권 HTS</h2>
+                <button onclick="closeStockModal()" style="border: none; background: transparent; font-size: 2em; cursor: pointer; color: white;">❌</button>
+            </div>
+            <div class="modal-body">
+                <div class="stock-list" id="dynamicStockList"></div>
+                <div class="stock-detail">
+                    <div class="stock-info-header">
+                        <div>
+                            <h2 id="selectedStockName" style="margin:0; color:white;">좌측에서 종목을 선택하세요</h2>
+                            <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #a4b0be;">현재가: <strong id="selectedStockPrice" style="color: #66fcf1; font-size: 1.3em;">0</strong> 만 원 | <span style="color:#bc13fe;">내 평단가: <span id="avgPriceDisplay">0</span> 만 원</span></p>
+                        </div>
+                        <div style="text-align: right; font-size: 1.2em;">내 보유수량: <strong id="ownedAmount" style="color: #ff4b4b;">0</strong> 주</div>
+                    </div>
+                    <div id="chart" class="chart-area"></div>
+                    <div class="trade-controls">
+                        <span>수량:</span> <input type="number" id="tradeQuantity" min="1" value="1" oninput="updateAffordableShares()">
+                        <button class="btn-buy" onclick="buyStock()">매수 (Buy)</button>
+                        <button class="btn-sell" onclick="sellStock()">매도 (Sell)</button>
+                        <span style="margin-left: auto;">주문가능 현금: <strong id="modalCash">1000</strong>만 원<span id="affordableShares"></span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🃏 황금카드 가챠 -->
+    <div id="gachaOverlay">
+        <div class="gacha-title">✨ 황금 카드 뽑기 ✨</div>
+        <div class="gacha-subtitle">카드를 선택하면 운명이 결정됩니다!</div>
+        <div class="gacha-cards" id="gachaCards"></div>
+        <div id="gachaResultBox">
+            <div id="gachaResultText"></div>
+            <button id="gachaCloseBtn" onclick="closeGacha()">확인 완료 ✓</button>
+        </div>
+    </div>
+    <canvas id="confettiCanvas"></canvas>
+    <div id="dudEffect"></div>
+    <div id="flashOverlay"></div>
+    <div id="turnReportModal" class="modal-overlay"><div class="card-content" style="border-color: #bc13fe; box-shadow: 0 0 30px rgba(188, 19, 254, 0.4); background: #1f2833; color: white; width: 450px;"><h2 style="color: #bc13fe; text-shadow: 0 0 10px #bc13fe; border-bottom: 2px dashed #45a29e; padding-bottom: 15px; margin-bottom: 20px;">📊 분기 결산 보고서</h2><div id="reportContent" style="font-size: 1.3em; line-height: 2; text-align: left; margin-bottom: 30px; background: #0b0c10; padding: 20px; border-radius: 10px; border: 1px solid #45a29e;"></div><button id="reportBtn" onclick="closeTurnReportModal()" style="background-color: #bc13fe; color: white; border: none; box-shadow: 0 0 15px #bc13fe; width: 100%; font-size: 1.4em; padding: 15px; border-radius: 8px;">다음으로 🚀</button></div></div>
+
+    <div id="ranking-screen" class="screen">
+        <h1 id="rankingTitle" class="neon-text" style="color:#bc13fe; margin-bottom:4px;">🏆 명예의 전당</h1>
+        <p id="rankingSubtitle" style="font-size:1.1em; margin-bottom:8px;">요원들의 성적입니다.</p>
+
+        <!-- 탭 버튼 -->
+        <div style="display:flex; gap:8px; margin-bottom:10px; justify-content:center;">
+            <button id="tabBtnGroup" onclick="switchRankingTab('group')"
+                style="padding:8px 24px; font-size:0.95em; font-weight:900; border-radius:8px; border:2px solid #bc13fe; background:#bc13fe; color:#000; cursor:pointer;">
+                👥 현재 그룹
+            </button>
+            <button id="tabBtnAll" onclick="switchRankingTab('all')"
+                style="padding:8px 24px; font-size:0.95em; font-weight:900; border-radius:8px; border:2px solid #45a29e; background:transparent; color:#45a29e; cursor:pointer;">
+                🌐 역대 랭킹
+            </button>
+        </div>
+
+        <div class="ranking-board">
+            <table>
+                <thead>
+                    <tr>
+                        <th>순위</th>
+                        <th>요원 이름</th>
+                        <th>총 자산</th>
+                        <th>계급</th>
+                        <th id="rankingColLabel">그룹</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingBody"><tr><td colspan="5">데이터 수신 중...</td></tr></tbody>
+            </table>
+        </div>
+        <br>
+        <button id="btnRankingAction" style="font-size: 1.5em; padding: 15px 30px;">기다려주세요...</button>
+    </div>
+
+    <!-- 🎖️ 업적 모달 (중복 방지 - ranking-screen 밖에 위치) -->
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxF4vXeCFDkD8VAA2TA3mGXjH_V19hpTnjL4E9eU6JGABp_FJmqTlfeWVPSIxm70RpN/exec";
+        function parseNum(str) { if(!str) return 0; return parseFloat(str.toString().replace(/[^0-9.-]/g, '')) || 0; }
+        
+        let allData = []; let currentTurnIndex = 0; const TOTAL_TURNS = 12;
+        let playerCash = 1000; let assets = { Bank: 0, Dollar: 0, Gold: 0 }; let currentRates = { Bank: 0, Dollar: 0, Gold: 0 };
+        let availableStocks = []; let ownedStocks = {}; let currentPrices = {}; let avgPrices = {}; let totalInvested = {}; let tradeHistory = {};
+        let currentSelectedStock = ''; let chartInstance = null; let donutChartInstance = null; let selectedStage = ""; let selectedGroup = "";
+        let isCardDrawnThisTurn = false;
+        let goldenCardEvents = [];
+
+        // ══════════════════════════════════════════
+        // 🎵 배경음악 시스템
+        // ══════════════════════════════════════════
+        const BGM_FILE = './bgm.mp3';   // ← 같은 폴더의 bgm.mp3 사용
+        let _bgmAudio = null;
+        let _bgmPlaying = false;
+
+        function startBgm() {
+            if (_bgmAudio) return;  // 이미 로드됐으면 중복 실행 방지
+            _bgmAudio = new Audio(BGM_FILE);
+            _bgmAudio.loop = true;
+            _bgmAudio.volume = 0.4;
+            _bgmAudio.play().then(() => {
+                _bgmPlaying = true;
+                updateBgmUI();
+                
+                
+            }).catch(e => {
+                console.warn('BGM 자동재생 실패 (브라우저 정책):', e.message);
+                // 자동재생 차단 시 BGM 켜기 버튼만 보여줌
+                
+            });
+        }
+
+        function toggleBgm() {
+            if (!_bgmAudio) {
+                // 버튼 클릭으로 처음 재생 시도 (자동재생 차단 우회)
+                _bgmAudio = new Audio(BGM_FILE);
+                _bgmAudio.loop = true;
+                _bgmAudio.volume = 0.4;
+                _bgmAudio.play().then(() => {
+                    _bgmPlaying = true;
+                    updateBgmUI();
+                    
+                });
+                return;
+            }
+            if (_bgmPlaying) {
+                _bgmAudio.pause();
+                _bgmPlaying = false;
+            } else {
+                _bgmAudio.play();
+                _bgmPlaying = true;
+            }
+            updateBgmUI();
+        }
+
+        function stopBgm() {
+            if (_bgmAudio) { _bgmAudio.pause(); _bgmAudio.currentTime = 0; _bgmPlaying = false; }
+            
+            updateBgmUI();
+        }
+
+        function setBgmVolume(val) {
+            if (_bgmAudio) _bgmAudio.volume = parseFloat(val);
+        }
+
+        function updateBgmUI() {
+            
+            
+        }
+
+        // ══════════════════════════════════════════
+        // ✅ 준비완료 시스템
+        // ══════════════════════════════════════════
+        let _isReady = false;
+        let _readyPollInterval = null;
+
+        function toggleReady() {
+            if (_isReady) {
+                SFX.cancel(); cancelReady();
+            } else {
+                SFX.ready(); setReady(true);
+            }
+        }
+
+        function setReady(val) {
+            _isReady = val;
+            const btn = document.getElementById('btnReady');
+            const lockOverlay = document.getElementById('readyLockOverlay');
+            const banner = document.getElementById('readyBanner');
+
+            if (val) {
+                btn.innerText = '⏳ 준비완료 (대기중)';
+                btn.style.background = '#2a5500'; btn.style.color = '#aaff55';
+                lockOverlay.classList.add('active');
+                banner.classList.add('active');
+                reportReadyStatus(true);
+            } else {
+                btn.innerText = '✅ 준비완료';
+                btn.style.background = '#1a4a00'; btn.style.color = '#aaff55';
+                lockOverlay.classList.remove('active');
+                banner.classList.remove('active');
+                reportReadyStatus(false);
+            }
+        }
+
+        function cancelReady() {
+            setReady(false);
+        }
+
+        async function reportReadyStatus(isReady) {
+            const pName = document.getElementById('playerName')?.value.trim() || '';
+            if (!pName) return;
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'reportReady',
+                        playerName: pName,
+                        stage: selectedStage,
+                        isReady: isReady
+                    })
+                });
+            } catch(e) { console.warn('준비완료 보고 실패:', e); }
+        }
+
+        // 교사 패널용: 준비완료 현황 폴링
+        function startReadyPoll() {
+            if (_readyPollInterval) clearInterval(_readyPollInterval);
+            fetchReadyStatus();
+            _readyPollInterval = setInterval(fetchReadyStatus, 5000);
+        }
+
+        async function fetchReadyStatus() {
+            try {
+                const res  = await fetch(API_URL + '?action=getReadyStatus&stage=' + selectedStage);
+                const data = await res.json();
+                if (!data || data.error) return;
+                const count = parseInt(data.count) || 0;
+                const names = data.names || [];
+                document.getElementById('readyCountDisplay').innerText = count + '명';
+                document.getElementById('readyStudentList').innerText  = names.length > 0 ? names.join(', ') : '없음';
+            } catch(e) {}
+        }
+
+        async function teacherBroadcastUnlock() {
+            if (!confirm('모든 학생의 준비완료를 해제하고 투자를 재개시킵니까?')) return;
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'broadcastUnlock', stage: selectedStage, group: selectedGroup })
+                });
+                alert('✅ 전체 잠금 해제 신호를 보냈습니다.');
+            } catch(e) { alert('실패: ' + e.message); }
+        }
+
+        // 교사: 턴 종료 → 암호 확인 후 학생들에게 다음 턴 신호 브로드캐스트
+        async function teacherEndTurn() {
+            const pw         = window._turnPasswords || {};
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            const nextData   = allData[currentTurnIndex + 1];
+            const finalPw    = pw['final'] || pw[String(totalTurns + 1)] || pw[totalTurns + 1];
+            const isFinalTurn = !nextData || parseInt(nextData['턴']) > totalTurns;
+
+            let userInput;
+            if (isFinalTurn) {
+                userInput = prompt(`[ 최종 턴 종료 ]\n최종 암호를 입력하면 모든 학생이 최종 결과 화면으로 이동합니다.`);
+            } else {
+                userInput = prompt(`[ 턴 종료 & 다음 분기로 ]\n다음 분기(${nextData['연도/분기']}) 암호를 입력하세요.\n\n※ 최종 암호 입력 시 바로 최종 결과 화면으로 이동합니다.`);
+            }
+            if (userInput === null) return;
+            userInput = userInput.trim();
+
+            // 최종 암호 입력 → 바로 결과 화면
+            if (finalPw && userInput === finalPw) {
+                if (!confirm('최종 암호 확인! 모든 학생을 최종 결과 화면으로 이동시킵니까?')) return;
+                closeTeacherModal();  // 패널 먼저 닫기
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'broadcastNextTurn', stage: selectedStage, group: selectedGroup, isFinal: true })
+                    });
+                } catch(e) {}
+                processEndTurnLogicSilent();
+                // showRanking이 내부에서 evaluateAchievement(칭호) → _doShowRanking(랭킹) 순으로 처리
+                return showRanking(true);
+            }
+
+            // 일반 턴 암호 확인
+            if (!isFinalTurn) {
+                const nextTurnNum      = parseInt(nextData['턴']);
+                const requiredPassword = pw[String(nextTurnNum)] || pw[nextTurnNum];
+                if (!requiredPassword) { alert('❌ 암호 데이터를 불러오지 못했습니다.'); return; }
+                if (userInput !== requiredPassword) { alert('❌ 암호가 틀렸습니다!'); return; }
+            } else {
+                // 마지막 턴인데 최종 암호도 틀림
+                alert('❌ 암호가 틀렸습니다!'); return;
+            }
+
+            // 암호 맞음 → 브로드캐스트 후 교사도 턴 진행
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'broadcastNextTurn', stage: selectedStage, group: selectedGroup })
+                });
+                processEndTurnLogic();
+            } catch(e) { alert('통신 실패: ' + e.message); }
+        }
+
+        // ══════════════════════════════════════════
+        // 🛠️ 강제 턴넘김 (교사 패널)
+        // ══════════════════════════════════════════
+
+        async function refreshForceStudentList() {
+            const sel      = document.getElementById('forceStudentSelect');
+            const turnSel  = document.getElementById('forceTurnInput');
+            const statusEl = document.getElementById('forceTurnStatus');
+            sel.innerHTML     = '<option value="">학생 선택</option>';
+            turnSel.innerHTML = '<option value="">분기 선택</option>';
+            statusEl.style.color = '#a4b0be';
+            statusEl.innerText   = '목록 불러오는 중...';
+
+            // 분기 드롭다운: allData 기반으로 채우기
+            if (allData && allData.length > 0) {
+                allData.forEach(d => {
+                    const turnNum = parseInt(d['턴']);
+                    const period  = d['연도/분기'] || (turnNum + '분기');
+                    if (!turnNum) return;
+                    const opt = document.createElement('option');
+                    opt.value = turnNum;
+                    opt.innerText = turnNum + '턴  (' + period + ')';
+                    turnSel.appendChild(opt);
+                });
+            }
+
+            try {
+                // 게임상태 시트 기준 — 로그인 후 바로 저장되므로 가장 정확
+                const res  = await fetch(API_URL + '?action=loadAllPlayers&stage=' + encodeURIComponent(selectedStage) + '&group=' + encodeURIComponent(selectedGroup));
+                const list = await res.json();
+                if (Array.isArray(list) && list.length > 0) {
+                    list.sort((a, b) => a.playerName.localeCompare(b.playerName, 'ko'));
+                    list.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.playerName;
+                        const turnData   = allData.find(d => parseInt(d['턴']) === r.turnIndex);
+                        const periodLabel = turnData ? turnData['연도/분기'] : (r.turnIndex + '분기');
+                        opt.innerText = r.playerName + '  (' + periodLabel + ')';
+                        sel.appendChild(opt);
+                    });
+                    statusEl.innerText = '✅ ' + list.length + '명 로드됨';
+                } else {
+                    statusEl.innerText = '⚠️ 학생 없음 — 아직 게임에 접속한 학생이 없습니다';
+                }
+            } catch(e) { statusEl.innerText = '⚠️ 불러오기 실패'; }
+        }
+
+        async function teacherForceTurn() {
+            const sel      = document.getElementById('forceStudentSelect');
+            const input    = document.getElementById('forceTurnInput');
+            const statusEl = document.getElementById('forceTurnStatus');
+            const pName    = sel.value.trim();
+            const target   = parseInt(input.value);
+            const periodLabel = input.options[input.selectedIndex]?.text || (target + '분기');
+            if (!pName) { statusEl.innerText = '⚠️ 학생을 선택하세요.'; statusEl.style.color='#ffaa44'; return; }
+            if (!target || target < 1) { statusEl.innerText = '⚠️ 분기를 선택하세요.'; statusEl.style.color='#ffaa44'; return; }
+            if (!confirm('[' + pName + '] 학생을 ' + periodLabel + '으로 강제 이동시킵니까?')) return;
+            statusEl.innerText = '전송 중...'; statusEl.style.color = '#a4b0be';
+            try {
+                const res  = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'setForceTurn', playerName: pName, stage: selectedStage, targetTurnIndex: target })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    statusEl.innerText = '✅ [' + pName + '] → ' + periodLabel + ' 신호 전송 완료 (7초 내 적용)';
+                    statusEl.style.color = '#aaff55';
+                    input.value = '';
+                } else {
+                    statusEl.innerText = '❌ 실패: ' + (data.message || '오류');
+                    statusEl.style.color = '#ff6b6b';
+                }
+            } catch(e) { statusEl.innerText = '❌ 통신 오류: ' + e.message; statusEl.style.color = '#ff6b6b'; }
+        }
+
+        // 교사: 전체 게임 데이터 리셋
+        async function teacherResetAllData() {
+            if (!confirm('⚠️ 모든 학생의 게임 데이터를 삭제합니다.\n새 게임을 시작하기 전에만 사용하세요.\n\n정말 리셋하시겠습니까?')) return;
+            if (!confirm('다시 한번 확인합니다.\n모든 저장 데이터(게임 진행상황, 준비완료 현황)가 삭제됩니다.\n계속하시겠습니까?')) return;
+            try {
+                const res  = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'resetAllStates', stage: selectedStage, group: selectedGroup })
+                });
+                const data = await res.json();
+                if (data && data.error) { alert('리셋 실패: ' + data.error); return; }
+                alert('✅ 모든 게임 데이터가 리셋되었습니다. 새 게임을 시작할 수 있습니다.');
+                document.getElementById('readyCountDisplay').innerText = '0명';
+                document.getElementById('readyStudentList').innerText  = '없음';
+            } catch(e) { alert('실패: ' + e.message); }
+        }
+
+        // GAS가 broadcastUnlock / broadcastNextTurn / broadcastGroup 신호를 확인 (학생 측)
+        // ★ GAS는 신호를 읽어도 지우지 않음 → 30명 폴링해도 모두 수신 가능
+        //    대신 프론트에서 "이미 처리한 신호" 타임스탬프를 기억해 중복 실행 방지
+        let _pollUnlockHandled = false;
+        let _pollNextTurnHandled = false;
+        let _lastNextTurnAt = '';   // ★ 마지막으로 처리한 nextTurn 신호의 updatedAt
+        let _lastForceTurnAt = '';  // ★ 강제 턴넘김 중복 처리 방지용
+
+        async function startUnlockPoll() {
+            setInterval(async () => {
+                try {
+                    const res  = await fetch(API_URL + '?action=checkUnlock&stage=' + selectedStage);
+                    const data = await res.json();
+
+                    // 그룹명 동기화 (항상)
+                    if (data && data.group) selectedGroup = data.group;
+
+                    // unlock 신호
+                    if (data && data.unlock) {
+                        if (!_pollUnlockHandled && _isReady) {
+                            _pollUnlockHandled = true;
+                            setReady(false);
+                            showEggToast('🔓 선생님이 잠금을 해제했습니다!');
+                        }
+                    } else {
+                        _pollUnlockHandled = false;
+                    }
+
+                    // ★ nextTurn 신호 — updatedAt 기반으로 "새 신호"인지 판별
+                    // 값이 1이더라도 이미 처리한 updatedAt 이면 무시 → 교사가 여러 번 눌러도 OK
+                    if (data && data.nextTurn) {
+                        const signalAt = data.updatedAt || '';
+                        if (signalAt !== _lastNextTurnAt) {
+                            _lastNextTurnAt = signalAt;
+                            setReady(false);
+                            if (data.isFinal) {
+                                processEndTurnLogicSilent();
+                                showRanking(true);
+                            } else {
+                                processEndTurnLogic();
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }, 6000);
+
+            // ══════════════════════════════════════════
+            // 🛠️ 강제 턴넘김 폴링 (교사가 스프레드시트에서 직접 설정)
+            // ══════════════════════════════════════════
+            setInterval(async () => {
+                try {
+                    const pName = document.getElementById('playerName')?.value.trim();
+                    if (!pName) return;
+
+                    const res  = await fetch(
+                        API_URL + '?action=checkForceTurn'
+                        + '&playerName=' + encodeURIComponent(pName)
+                        + '&stage=' + encodeURIComponent(selectedStage)
+                    );
+                    const data = await res.json();
+
+                    if (!data || !data.found) return;
+
+                    // updatedAt 기반 중복 처리 방지
+                    const signalAt = data.updatedAt || '';
+                    if (signalAt === _lastForceTurnAt) return;
+                    _lastForceTurnAt = signalAt;
+
+                    // targetTurnIndex = 교사가 입력한 턴 번호(1~12)
+                    // allData 인덱스와 다를 수 있으므로 findIndex로 탐색
+                    const targetTurnNum = parseInt(data.targetTurnIndex);
+                    if (isNaN(targetTurnNum)) return;
+
+                    const currentTurnNum = parseInt(allData[currentTurnIndex]['턴']);
+                    if (targetTurnNum <= currentTurnNum) return;
+
+                    const targetIdx = allData.findIndex(d => parseInt(d['턴']) === targetTurnNum);
+                    if (targetIdx === -1) return;
+
+                    // 처리 완료 → GAS 강제턴 레코드 삭제
+                    fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'clearForceTurn', playerName: pName, stage: selectedStage })
+                    });
+
+                    // 목표 직전 턴까지 조용히 계산
+                    const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+                    while (currentTurnIndex < targetIdx - 1) {
+                        _applyTurnSilent();
+                    }
+
+                    // 연도/분기 표시
+                    const targetPeriod = allData[targetIdx]['연도/분기'] || (targetTurnNum + '분기');
+                    showEggToast('🛠️ 선생님이 ' + targetPeriod + '으로 강제 이동했습니다.');
+
+                    const isFinalTurn = parseInt(allData[targetIdx]['턴']) > totalTurns;
+                    if (isFinalTurn) {
+                        processEndTurnLogicSilent();
+                        showRanking(true);
+                    } else {
+                        processEndTurnLogic();
+                    }
+                } catch(e) {}
+            }, 7000);  // 6000ms 폴링과 엇갈리도록 7초
+        }
+
+        // 강제 턴넘김 시 도중 턴 조용히 계산 (이자·환차익·대출이자 반영, UI 미갱신)
+        function _applyTurnSilent() {
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            if (currentTurnIndex >= allData.length - 1) return;
+            const prevBankRate   = currentRates.Bank;
+            const prevDollarRate = currentRates.Dollar;
+            const prevGoldRate   = currentRates.Gold;
+            currentTurnIndex++;
+            const nextData = allData[currentTurnIndex];
+            if (!nextData || parseInt(nextData['턴']) > totalTurns) return;
+            // 예금 이자
+            if (assets.Bank > 0) assets.Bank += Math.floor(assets.Bank * (prevBankRate / 100));
+            // 달러 환차익
+            const newDollarRate = parseNum(nextData['💵 달러(환율)']);
+            if (assets.Dollar > 0 && prevDollarRate > 0) assets.Dollar = Math.floor(assets.Dollar * (newDollarRate / prevDollarRate));
+            // 금 가치변동
+            const newGoldRate = parseNum(nextData['🪙 금괴(1g)']);
+            if (assets.Gold > 0 && prevGoldRate > 0) assets.Gold = Math.floor(assets.Gold * (newGoldRate / prevGoldRate));
+            // 대출 이자
+            if (loanAmount > 0) playerCash -= Math.floor(loanAmount * getLoanRate());
+            // currentRates 업데이트 (다음 반복에서 prevRate로 사용)
+            let newBankRate = parseNum(nextData['🏦 예금금리']); if (newBankRate > 0 && newBankRate <= 1) newBankRate *= 100;
+            currentRates.Bank   = newBankRate || prevBankRate;
+            currentRates.Dollar = newDollarRate || prevDollarRate;
+            currentRates.Gold   = newGoldRate   || prevGoldRate;
+            isCardDrawnThisTurn = false;
+            tradeThisTurn = false;
+        }
+
+        // ══════════════════════════════════════════
+        // 📋 분기별 황금카드 정보 데이터
+        // ══════════════════════════════════════════
+        const INFO_CARDS = {
+            '1997': [
+                { turns:[1,2,3,4], type:'info', icon:'💵', title:'긴급 찌라시 (달러·금)', desc:'"환율이 600원대에서 1,700원대로 폭등하고 있어! 달러랑 금괴 지금 당장 사야 해. IMF 위기엔 안전자산이 답이야!"\n\n→ 추천: 💵 달러 매수, 🪙 금괴 매수', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'⚠️', title:'위험 경고장 (주식·예금)', desc:'"D물산이랑 J은행 지금 당장 팔아! 은행들도 부실 대출로 줄줄이 망하고 있어서 예금도 위험할 수 있어. 현금·달러로 피신해!"\n\n→ 위험: D물산, J은행 / 주의: 🏦 예금', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'🛡️', title:'찌라시 (방어)', desc:'"K전력이랑 N식품은 절대 안 망해. 전기 끊고 굶을 수 없잖아. 이런 필수소비재는 위기에도 버텨!"\n\n→ 안전 종목: K전력, N식품', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'🪙', title:'찌라시 (달러·금 주의)', desc:'"달러랑 금이 너무 많이 올랐어. 슬슬 팔고 저점 찍은 주식으로 갈아타는 타이밍이야!"\n\n→ 매도 검토: 💵 달러, 🪙 금 / 주목: S전자, S통신', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'🕵️', title:'찌라시 (주식)', desc:'"S통신이 IMF 이후 가입자가 오히려 늘고 있대! 이동통신 시대 본격 개막이야!"\n\n→ 주목 종목: S통신', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'🏦', title:'찌라시 (예금·주식)', desc:'"예금금리가 안정되고 있어. 이제 고금리 예금 특수는 끝나가. S전자·S통신으로 옮겨 타야 해!"\n\n→ 전환 검토: 🏦 예금 → S전자, S통신', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'🕵️', title:'찌라시 (기회)', desc:'"S전자·S통신 이제 완전히 살아났어! 아직 늦지 않았어!"\n\n→ 주목 종목: S전자, S통신', action: ()=>{ playerCash+=50; } },
+            ],
+            '2008': [
+                { turns:[1,2,3,4], type:'info', icon:'💵', title:'긴급 찌라시 (달러·금)', desc:'"리먼 파산으로 전 세계가 패닉이야! 달러랑 금이 폭등하고 있어. 지금 당장 주식 팔고 안전자산으로 피신해!"\n\n→ 추천: 💵 달러 매수, 🪙 금괴 매수', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'⚠️', title:'위험 경고장 (주식)', desc:'"C조선이랑 S건설 지금 당장 팔아! 세계 무역이 멈추면서 수주 제로에 미분양 폭탄까지."\n\n→ 위험 종목: C조선, S건설', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'🛡️', title:'찌라시 (방어)', desc:'"N포털이랑 K텔레콤은 현금 빵빵하고 실적 안정적이야. 예금금리도 높아서 🏦 예금도 나쁘지 않아!"\n\n→ 안전: N포털, K텔레콤, 🏦 예금', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'💵', title:'찌라시 (달러 전략)', desc:'"달러가 1,500원 돌파했어. 이제 슬슬 고점이야. 달러 팔고 H자동차로 갈아타는 게 더 이득일 수 있어!"\n\n→ 매도 검토: 💵 달러 / 주목: H자동차', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'🕵️', title:'찌라시 (주식)', desc:'"S전자가 반도체 사이클 바닥 찍고 올라오고 있대! 아이폰 나오면서 스마트폰 부품 수요가 폭발할 거래."\n\n→ 주목 종목: S전자', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'🏦', title:'찌라시 (예금→주식 전환)', desc:'"경기 회복되면 예금금리는 내려가. H자동차·S전자로 옮겨 타야 할 타이밍이야!"\n\n→ 전환: 🏦 예금 → H자동차, S전자', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'⚠️', title:'위험 경고장', desc:'"C조선·S건설은 구조조정 끝났어도 예전 같지 않아. 대장주 잡아!"\n\n→ 여전히 위험: C조선, S건설', action: ()=>{ playerCash+=50; } },
+            ],
+            '2020': [
+                { turns:[1,2,3,4], type:'info', icon:'🪙', title:'긴급 찌라시 (금·달러)', desc:'"코로나 공포로 안전자산이 폭등하고 있어! 금이랑 달러 지금 사야 해."\n\n→ 추천: 🪙 금괴 매수, 💵 달러 매수', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'⚠️', title:'위험 경고장 (주식)', desc:'"A항공 지금 들고 있으면 큰일 나! 비행기 90% 세워두고 적자만 쌓이고 있어."\n\n→ 위험 종목: A항공, W오피스', action: ()=>{ playerCash+=50; } },
+                { turns:[1,2,3,4], type:'info', icon:'🕵️', title:'찌라시 (성장주)', desc:'"T모터스 주가 미쳤어! S바이오는 백신 위탁생산 계약 성사 임박이래!"\n\n→ 주목 종목: T모터스, S바이오', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'🪙', title:'찌라시 (금 매도 타이밍)', desc:'"백신 소식에 안전자산 인기가 식고 있어. 금이랑 달러 팔고 T모터스·A스마트폰으로!"\n\n→ 매도 검토: 🪙 금, 💵 달러 / 주목: T모터스, A스마트폰', action: ()=>{ playerCash+=50; } },
+                { turns:[5,6,7,8], type:'info', icon:'🛡️', title:'찌라시 (S전자)', desc:'"S전자는 반도체 슈퍼사이클 진입이래! 공급은 부족하고 가격은 오르고 있대!"\n\n→ 안전·성장 종목: S전자', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'🏦', title:'찌라시 (예금금리 주목)', desc:'"인플레이션으로 금리가 오르기 시작했어! 예금금리가 매력적인 수준이 됐어."\n\n→ 검토: 🏦 예금 비중 확대', action: ()=>{ playerCash+=50; } },
+                { turns:[9,10,11,12], type:'info', icon:'🕵️', title:'찌라시 (기회)', desc:'"T모터스·A스마트폰은 아직 성장 여력이 있어. W오피스·A항공은 여전히 위험해!"\n\n→ 주목: T모터스, A스마트폰 / 위험: A항공, W오피스', action: ()=>{ playerCash+=50; } },
+            ]
+        };
+
+        function getInfoCardForCurrentTurn() {
+            const turnNum  = parseInt(allData[currentTurnIndex]['턴']);
+            const infoData = window._INFO_CARDS || INFO_CARDS;
+            const cards    = infoData[selectedStage];
+            if (!cards) return null;
+            const matched  = cards.filter(c => c.turns.includes(turnNum));
+            if (matched.length === 0) return cards[Math.floor(Math.random() * cards.length)];
+            const card = matched[Math.floor(Math.random() * matched.length)];
+            if (!card.action) card.action = () => { playerCash += 50; };
+            return card;
+        }
+
+        // 대출 변수
+        let loanAmount = 0;
+        const getLoanMax  = () => window._LOAN_MAX  || 1000;
+        const getLoanRate = () => window._LOAN_RATE || 0.10;
+
+        // 업적/티어 트래킹 변수
+        let prevNetWorth = 1000;
+        let currentTier = 'bronze';
+        let statsStocksBought   = {};
+        let statsStocksSold     = {};
+        let statsBankOnlyTurns  = 0;
+        let statsHighBuyLowSell = false;
+        let lastBuyPrice        = {};
+        let totalTradeTurns     = 0;
+        let tradeThisTurn       = false;
+
+        // ══════════════════════════════════════════
+        // 🔑 접속 암호 팝업
+        // ══════════════════════════════════════════
+        async function submitAccessCode() {
+            const input = document.getElementById('accessCodeInput');
+            const btn   = document.getElementById('accessGateBtn');
+            const errEl = document.getElementById('gateError');
+            const code  = input.value.trim();
+            if (!code) { errEl.innerText = '암호를 입력해주세요.'; return; }
+            btn.disabled = true; btn.innerText = '확인 중...'; errEl.innerText = '';
+            try {
+                const res  = await fetch(API_URL + '?action=checkAccess&code=' + encodeURIComponent(code));
+                const data = await res.json();
+                if (data.ok) {
+                    document.getElementById('accessGate').classList.add('hidden');
+                    input.value = '';
+                } else {
+                    errEl.innerText = '❌ 암호가 틀렸습니다.';
+                    btn.disabled = false; btn.innerText = '🚀 입장하기';
+                    input.select();
+                }
+            } catch(e) {
+                errEl.innerText = '❌ 서버 연결 실패.';
+                btn.disabled = false; btn.innerText = '🚀 입장하기';
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // 🎬 인트로 영상 (./intro.mp4)
+        // ══════════════════════════════════════════
+        var _progressInterval = null;
+
+        function openIntroVideo() {
+            const vid = document.getElementById('introVideo');
+            document.getElementById('introVideoOverlay').classList.add('active');
+            document.getElementById('videoProgressBar').style.width = '0%';
+            vid.currentTime = 0;
+            vid.play().catch(() => {});
+            // 진행바
+            clearInterval(_progressInterval);
+            _progressInterval = setInterval(function() {
+                if (vid.duration > 0)
+                    document.getElementById('videoProgressBar').style.width = (vid.currentTime / vid.duration * 100) + '%';
+            }, 300);
+        }
+
+        function closeIntroVideo() {
+            clearInterval(_progressInterval);
+            document.getElementById('videoProgressBar').style.width = '0%';
+            document.getElementById('introVideoOverlay').classList.remove('active');
+            const vid = document.getElementById('introVideo');
+            vid.pause();
+        }
+
+        // 영상 끝나면 자동으로 닫기
+        document.addEventListener('DOMContentLoaded', function() {
+            const vid = document.getElementById('introVideo');
+            if (vid) vid.addEventListener('ended', closeIntroVideo);
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { const ov = document.getElementById('introVideoOverlay'); if (ov.classList.contains('active')) closeIntroVideo(); }
+        });
+
+        // ══════════════════════════════════════════
+        // ══════════════════════════════════════════
+        // 🔊 효과음 시스템 (Web Audio API 내장)
+        // ══════════════════════════════════════════
+        const _sfxCtx = (function() {
+            try { return new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+        })();
+
+        function _playTone(opts) {
+            if (!_sfxCtx) return;
+            // resume이 필요한 경우 (브라우저 정책)
+            if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+            const { type='sine', freqs=[440], duration=0.15, vol=0.18, decay=0.1, delay=0 } = opts;
+            freqs.forEach((freq, i) => {
+                const osc  = _sfxCtx.createOscillator();
+                const gain = _sfxCtx.createGain();
+                osc.connect(gain); gain.connect(_sfxCtx.destination);
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, _sfxCtx.currentTime + delay + i * 0.06);
+                gain.gain.setValueAtTime(vol, _sfxCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, _sfxCtx.currentTime + delay + duration + decay);
+                osc.start(_sfxCtx.currentTime + delay);
+                osc.stop(_sfxCtx.currentTime + delay + duration + decay + 0.05);
+            });
+        }
+
+        function _playNoise(duration=0.08, vol=0.12) {
+            if (!_sfxCtx) return;
+            if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+            const buf  = _sfxCtx.createBuffer(1, _sfxCtx.sampleRate * duration, _sfxCtx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const src  = _sfxCtx.createBufferSource();
+            const gain = _sfxCtx.createGain();
+            const filt = _sfxCtx.createBiquadFilter();
+            src.buffer = buf;
+            filt.type = 'bandpass'; filt.frequency.value = 800;
+            src.connect(filt); filt.connect(gain); gain.connect(_sfxCtx.destination);
+            gain.gain.setValueAtTime(vol, _sfxCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, _sfxCtx.currentTime + duration);
+            src.start(); src.stop(_sfxCtx.currentTime + duration + 0.05);
+        }
+
+        const SFX = {
+            // 매수 — 상승하는 두 음
+            buy:     () => _playTone({ type:'triangle', freqs:[330, 440], duration:0.12, vol:0.2, decay:0.12 }),
+            // 매도 — 하강하는 두 음
+            sell:    () => _playTone({ type:'triangle', freqs:[440, 330], duration:0.12, vol:0.2, decay:0.12 }),
+            // 입금/대출 — 동전 소리 느낌
+            cash_in: () => _playTone({ type:'sine', freqs:[660, 880], duration:0.08, vol:0.18, decay:0.08 }),
+            // 출금/상환 — 낮은 톤
+            cash_out:() => _playTone({ type:'sine', freqs:[440, 330], duration:0.08, vol:0.15, decay:0.1 }),
+            // 준비완료 — 체크 소리
+            ready:   () => _playTone({ type:'sine', freqs:[523, 659, 784], duration:0.08, vol:0.18, decay:0.08 }),
+            // 준비완료 취소 — 역방향
+            cancel:  () => _playTone({ type:'sine', freqs:[784, 523], duration:0.1, vol:0.15, decay:0.1 }),
+            // 황금카드 뽑기 — 반짝이는 느낌
+            gacha:   () => _playTone({ type:'sine', freqs:[523,659,784,1047], duration:0.1, vol:0.2, decay:0.06 }),
+            // 카드 선택 — 팡!
+            pick:    () => { _playTone({ type:'triangle', freqs:[880, 1047], duration:0.15, vol:0.22, decay:0.15 }); _playNoise(0.05, 0.1); },
+            // 턴 종료/다음 분기 — 웅장한 느낌
+            turn_end:() => _playTone({ type:'sawtooth', freqs:[220, 330, 440], duration:0.2, vol:0.15, decay:0.3 }),
+            // 랭킹/칭호 획득 — 팡파레
+            fanfare: () => {
+                _playTone({ type:'triangle', freqs:[523], duration:0.15, vol:0.2, decay:0.05, delay:0 });
+                _playTone({ type:'triangle', freqs:[659], duration:0.15, vol:0.2, decay:0.05, delay:0.15 });
+                _playTone({ type:'triangle', freqs:[784, 1047], duration:0.25, vol:0.22, decay:0.2, delay:0.3 });
+            },
+            // 티어업 — 레벨업 효과
+            tier_up: () => {
+                _playTone({ type:'sine', freqs:[523,659,784,1047,1318], duration:0.1, vol:0.2, decay:0.08 });
+            },
+            // 일반 클릭
+            click:   () => _playTone({ type:'sine', freqs:[600], duration:0.05, vol:0.1, decay:0.05 }),
+            // 오류/경고
+            error:   () => _playTone({ type:'sawtooth', freqs:[180, 150], duration:0.15, vol:0.15, decay:0.1 }),
+            // 탑승 시작
+            launch:  () => {
+                _playTone({ type:'sawtooth', freqs:[110,165,220,330,440], duration:0.12, vol:0.18, decay:0.08 });
+            },
+        };
+
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+        async function fetchScenarioAndStart() {
+            const name    = document.getElementById('playerName').value.trim();
+            selectedStage = document.getElementById('stageSelect').value;
+            // selectedGroup은 교사 패널에서만 설정 — 학생은 기본값 유지
+            if (!name) { alert("요원 이름을 입력해주세요!"); return; }
+            const btn = document.getElementById('startBtn');
+            btn.innerText = "데이터 통신 중 📡..."; btn.disabled = true;
+            try {
+                const [response, pwRes, cfgRes] = await Promise.all([
+                    fetch(API_URL + "?stage=" + selectedStage),
+                    fetch(API_URL + "?action=getTurnPasswords&stage=" + selectedStage),
+                    fetch(API_URL + "?action=getConfig&stage=" + selectedStage)
+                ]);
+                allData = await response.json();
+                try { window._turnPasswords = await pwRes.json(); } catch(e) { window._turnPasswords = {}; }
+                try {
+                    const cfg = await cfgRes.json();
+                    if (cfg.TOTAL_TURNS)   window._TOTAL_TURNS   = parseInt(cfg.TOTAL_TURNS);
+                    if (cfg.INITIAL_CASH)  playerCash            = parseFloat(cfg.INITIAL_CASH);
+                    if (cfg.LOAN_MAX)      window._LOAN_MAX      = parseFloat(cfg.LOAN_MAX);
+                    if (cfg.LOAN_RATE)     window._LOAN_RATE     = parseFloat(cfg.LOAN_RATE);
+                    if (cfg.TIERS)         window._TIERS         = cfg.TIERS;
+                    if (cfg.ACHIEVEMENTS)  window._ACHIEVEMENTS  = cfg.ACHIEVEMENTS;
+                    if (cfg.EASTER_EGGS)   window._EASTER_EGGS   = cfg.EASTER_EGGS;
+                    if (cfg.REWARD_CARDS)  window._REWARD_CARDS  = cfg.REWARD_CARDS;
+                    if (cfg.DUD_CARDS)     window._DUD_CARDS     = cfg.DUD_CARDS;
+                    if (cfg.BREAKING_NEWS) window._BREAKING_NEWS = cfg.BREAKING_NEWS;
+                    if (cfg.INFO_CARDS)    window._INFO_CARDS    = cfg.INFO_CARDS;
+                } catch(e) { console.warn('config 로드 실패:', e); }
+                if (allData.error) { alert(allData.error); btn.innerText = "타임머신 탑승 🚀"; btn.disabled = false; return; }
+
+                if (name === "교사" || name === "선생님") {
+                    document.getElementById('btnTeacherOpen').style.display = "inline-block";
+                    buildTeacherPasswordTable();
+                    startReadyPoll();
+                }
+
+                availableStocks = [];
+                let headers = Object.keys(allData[0]);
+                headers.forEach(h => { if(h.endsWith('_종가')) availableStocks.push(h.replace('_종가', '')); });
+                availableStocks.forEach(st => { ownedStocks[st]=0; currentPrices[st]=0; avgPrices[st]=0; totalInvested[st]=0; tradeHistory[st]=[]; });
+
+                let listHtml = '';
+                availableStocks.forEach(st => { listHtml += `<div id="btn-${st}" class="stock-item" onclick="selectStock('${st}', '${st}')">${st} <span class="stock-desc">📈 상세 차트 보기</span></div>`; });
+                document.getElementById('dynamicStockList').innerHTML = listHtml;
+
+                const _buildAction = (type, amount) => {
+                    if (type === 'cash')    return () => { playerCash    += amount; };
+                    if (type === 'gold')    return () => { assets.Gold   += amount; };
+                    if (type === 'dollar')  return () => { assets.Dollar += amount; };
+                    if (type === 'penalty') return () => { playerCash = Math.max(0, playerCash - amount); };
+                    return () => {};
+                };
+                let rewardCards = window._REWARD_CARDS
+                    ? window._REWARD_CARDS.map(r => ({ ...r, action: _buildAction(r.actionType, r.amount) }))
+                    : [
+                        { type:'reward', icon:'💰', title:'정부 지원금 수령!', desc:'현금 +300만 원이 입금되었습니다.', action: () => { playerCash += 300; } },
+                        { type:'reward', icon:'🪙', title:'금괴 발견!', desc:'금괴 자산 +100만 원 추가.', action: () => { assets.Gold += 100; } },
+                        { type:'reward', icon:'💵', title:'숨겨둔 달러 발견!', desc:'달러 자산 +100만 원 추가.', action: () => { assets.Dollar += 100; } },
+                        { type:'reward', icon:'📈', title:'배당금 입금!', desc:'현금 +200만 원 입금.', action: () => { playerCash += 200; } },
+                    ];
+                let dudCards = window._DUD_CARDS
+                    ? window._DUD_CARDS.map(r => ({ ...r, action: _buildAction(r.actionType, r.amount) }))
+                    : [
+                        { type:'dud', icon:'💸', title:'세금 폭탄!', desc:'현금 -100만 원.', action: () => { playerCash = Math.max(0, playerCash - 100); } },
+                        { type:'dud', icon:'🔥', title:'사기 당함!', desc:'현금 -80만 원.', action: () => { playerCash = Math.max(0, playerCash - 80); } },
+                        { type:'dud', icon:'💔', title:'꽝!', desc:'아무 효과 없음.', action: () => {} },
+                    ];
+                goldenCardEvents = { reward: rewardCards, dud: dudCards };
+
+                currentTurnIndex = allData.findIndex(d => parseInt(d['턴']) === 1);
+                if (currentTurnIndex === -1) currentTurnIndex = 0;
+                if (window._pendingEgg) { window._pendingEgg.action(); showEggToast(window._pendingEgg.msg); window._pendingEgg=null; }
+                initDarkBrokerTurn();
+                initGlitchTurn();
+                SFX.launch();
+                showScreen('game-screen');
+                startBgm();  // 🎵 타임머신 탑승 후 BGM 시작
+                initChart(); initDonutChart();
+                await loadGameState(name, selectedStage);
+                // 교사는 직접 턴을 진행하므로 poll 불필요 — 학생만 실행
+                // ★ loadGameState 완료 후 시작 — 재로그인 시 오래된 신호 오작동 방지
+                if (name !== "교사" && name !== "선생님") {
+                    startUnlockPoll();
+                }
+            } catch(error) {
+                console.error(error);
+                alert("통신 오류!"); btn.innerText = "타임머신 탑승 🚀"; btn.disabled = false;
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // 👑 교사 패널 암호표 (최종 암호 포함)
+        // ══════════════════════════════════════════
+        function buildTeacherPasswordTable() {
+            let tbody = document.getElementById('teacherPasswordList'); tbody.innerHTML = '';
+            const nextNeeded = parseInt(allData[currentTurnIndex]['턴']) + 1;
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            const pw = window._turnPasswords || {};
+
+            for (let i = 0; i < allData.length; i++) {
+                let d = allData[i]; let turnNum = parseInt(d['턴']);
+                if (turnNum > 1) {
+                    let pwVal = pw[String(turnNum)] || pw[turnNum] || '????';
+                    let label = d['연도/분기'] || (turnNum + '턴');
+                    const isCurrent = (turnNum === nextNeeded);
+                    const rowStyle  = isCurrent ? 'background:#1a2a00; border-left:4px solid #aaff00;' : '';
+                    const pwStyle   = isCurrent ? 'color:#aaff00; font-size:1.6em; font-weight:900; text-shadow:0 0 12px #88ff00; animation:pwPulse 1s ease-in-out infinite;' : '';
+                    const labelExtra = isCurrent ? ' <span style="background:#aaff00;color:#000;font-size:0.7em;padding:2px 7px;border-radius:4px;font-weight:900;">▶ 지금 이거!</span>' : '';
+                    tbody.innerHTML += `<tr style="${rowStyle}"><td>${turnNum}턴 (${label})${labelExtra}</td><td class="pw-highlight" style="${pwStyle}">${pwVal}</td></tr>`;
+                }
+            }
+
+            // ★ 최종 암호 (별도 행)
+            const finalPw = pw['final'] || pw[String(totalTurns + 1)] || pw[totalTurns + 1] || '????';
+            tbody.innerHTML += `
+                <tr class="final-pw-row">
+                    <td style="color:#cc88ff; font-weight:900;">
+                        🏁 최종 결과 발표
+                        <span style="background:#bc13fe;color:#fff;font-size:0.7em;padding:2px 8px;border-radius:4px;font-weight:900;margin-left:6px;">FINAL</span>
+                    </td>
+                    <td class="final-pw-highlight">${finalPw}</td>
+                </tr>`;
+        }
+
+        async function applyGroupName() {
+            const val = document.getElementById('groupNameInput').value.trim();
+            if (!val) { alert('그룹명을 입력해주세요.'); return; }
+            selectedGroup = val;
+            document.getElementById('teacherGroupLabel').innerText = selectedGroup;
+            // GAS 시그널 시트에 그룹명 브로드캐스트 → 학생들이 poll로 즉시 수신
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'broadcastGroup', stage: selectedStage, group: selectedGroup })
+                });
+                showEggToast(`✅ 그룹명 설정: ${selectedGroup}`);
+            } catch(e) {
+                showEggToast(`✅ 그룹명 설정: ${selectedGroup} (오프라인)`);
+            }
+        }
+
+        function openTeacherModal() { SFX.click();
+            buildTeacherPasswordTable();
+            // 이미 설정된 그룹명이 있으면 입력칸에 복원
+            if (selectedGroup) {
+                document.getElementById('groupNameInput').value = selectedGroup;
+                document.getElementById('teacherGroupLabel').innerText = selectedGroup;
+            }
+            document.getElementById('teacherModal').style.display = 'flex';
+            startReadyPoll();
+            refreshForceStudentList();  // 강제 턴넘김 학생 목록 자동 로드
+        }
+        function closeTeacherModal() { document.getElementById('teacherModal').style.display = 'none'; }
+
+        function applyTurnData() {
+            const data = allData[currentTurnIndex]; let turnNum = parseInt(data['턴']);
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            document.getElementById('currentTime').innerText = `🕒 ${data['연도/분기']} (${turnNum}/${totalTurns})`;
+            let progressHtml = '';
+            for (let i=1; i<=totalTurns; i++) { progressHtml += `<div class="progress-box${i<=turnNum?' active':''}"></div>`; }
+            document.getElementById('progressContainer').innerHTML = progressHtml;
+            document.getElementById('newsText').innerText = data['📰 시대 상황 (뉴스 헤드라인)'];
+            let bankRate = parseNum(data['🏦 예금금리']); if (bankRate>0 && bankRate<=1) bankRate*=100; bankRate=parseFloat(bankRate.toFixed(2));
+            document.getElementById('rateBank').innerText   = bankRate + '%';
+            document.getElementById('rateDollar').innerText = parseNum(data['💵 달러(환율)']).toLocaleString() + ' 원';
+            document.getElementById('rateGold').innerText   = parseNum(data['🪙 금괴(1g)']).toLocaleString() + ' 원';
+            currentRates.Bank = bankRate; currentRates.Dollar = parseNum(data['💵 달러(환율)']); currentRates.Gold = parseNum(data['🪙 금괴(1g)']);
+            availableStocks.forEach(st => { currentPrices[st] = parseNum(data[st + '_종가']) / 10000; });
+            if (currentSelectedStock) selectStock(currentSelectedStock, document.getElementById('selectedStockName').innerText);
+            updateUI(true);
+            checkDarkBroker(turnNum);
+            checkGlitchEvent(turnNum);
+        }
+
+        // ══════════════════════════════════════════
+        // 🔒 턴 종료 (파이널 암호도 포함)
+        // ══════════════════════════════════════════
+        function endTurnWithPassword() {
+            if (_isReady) { alert('준비완료 상태에서는 턴 종료가 불가합니다.\n준비완료를 취소하세요.'); return; }
+            const pw = window._turnPasswords || {};
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            const nextData = allData[currentTurnIndex + 1];
+
+            if (nextData && parseInt(nextData['턴']) <= totalTurns) {
+                // 중간 턴
+                let nextTurnNum = parseInt(nextData['턴']);
+                let requiredPassword = pw[String(nextTurnNum)] || pw[nextTurnNum];
+                if (!requiredPassword) { alert("❌ 암호 데이터를 불러오지 못했습니다. 새로고침 후 다시 시도하세요."); return; }
+                let userInput = prompt(`[ 턴 종료 및 동기화 ]\n선생님이 알려주신 다음 분기(${nextData['연도/분기']}) '암호 4자리'를 입력하세요:\n\n또는 최종 암호를 입력하면 바로 결과 화면으로 이동합니다.`);
+                if (userInput === null) return;
+                userInput = userInput.trim();
+
+                // ★ 파이널 암호 입력 시 바로 최종 랭킹
+                const finalPw = pw['final'] || pw[String(totalTurns + 1)] || pw[totalTurns + 1];
+                if (finalPw && userInput === finalPw) {
+                    if (confirm('최종 암호가 확인되었습니다!\n지금까지의 자산으로 최종 랭킹에 등록할까요?')) {
+                        processEndTurnLogicSilent();
+                        return showRanking(true);
+                    }
+                    return;
+                }
+
+                if (userInput !== requiredPassword) { alert("❌ 암호가 틀렸습니다!"); return; }
+            } else {
+                // 마지막 턴 → 최종 암호
+                let requiredPassword = pw['final'] || pw[String(totalTurns + 1)] || pw[totalTurns + 1];
+                let userInput = prompt(`[ 턴 종료 및 동기화 ]\n최종 결과 발표장으로 이동합니다!\n'최종 암호 4자리'를 입력하세요:`);
+                if (userInput === null) return;
+                if (userInput.trim() !== requiredPassword) { alert("❌ 암호가 틀렸습니다!"); return; }
+            }
+            processEndTurnLogic();
+        }
+
+        // 자산 정산 없이 현재 상태로만 랭킹 등록
+        function processEndTurnLogicSilent() {
+            closeTeacherModal();
+            isCardDrawnThisTurn = false;
+            tradeThisTurn = false;
+        }
+
+        function processEndTurnLogic() {
+            SFX.turn_end();
+            closeTeacherModal();  // 턴 이동 시 교사 패널 자동 닫기
+            setReady(false);  // 턴 이동 시 준비완료 자동 해제
+            let prevBankRate = currentRates.Bank; let prevDollarRate = currentRates.Dollar; let prevGoldRate = currentRates.Gold;
+            currentTurnIndex++;
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            const nextData = allData[currentTurnIndex];
+            if (!nextData || parseInt(nextData['턴']) > totalTurns) { return showRanking(true); }
+
+            let newDollarRate = parseNum(nextData['💵 달러(환율)']); let newGoldRate = parseNum(nextData['🪙 금괴(1g)']);
+            let loanInterest = 0;
+            if (loanAmount > 0) { loanInterest = Math.floor(loanAmount * getLoanRate()); playerCash -= loanInterest; }
+            let interestEarned = 0;
+            if (assets.Bank > 0) { interestEarned = Math.floor(assets.Bank * (prevBankRate / 100)); assets.Bank += interestEarned; }
+            let dollarProfit = 0;
+            if (assets.Dollar > 0 && prevDollarRate > 0) { let nd = assets.Dollar * (newDollarRate / prevDollarRate); dollarProfit = Math.floor(nd - assets.Dollar); assets.Dollar = Math.floor(nd); }
+            let goldProfit = 0;
+            if (assets.Gold > 0 && prevGoldRate > 0) { let ng = assets.Gold * (newGoldRate / prevGoldRate); goldProfit = Math.floor(ng - assets.Gold); assets.Gold = Math.floor(ng); }
+
+            let stockRows = ''; let stockPrevValue = 0; let stockNextValue = 0;
+            availableStocks.forEach(st => {
+                if (ownedStocks[st] > 0) {
+                    const prevPrice = parseNum(allData[currentTurnIndex - 1][st + '_종가']) / 10000;
+                    const nextPrice = parseNum(nextData[st + '_종가']) / 10000;
+                    const prev = Math.floor(ownedStocks[st] * prevPrice);
+                    const next = Math.floor(ownedStocks[st] * nextPrice);
+                    const diff = next - prev;
+                    stockPrevValue += prev; stockNextValue += next;
+                    stockRows += `<div style="display:flex;justify-content:space-between;padding-left:12px;font-size:0.88em;color:#ccc;"><span>ㄴ ${st} (${ownedStocks[st]}주)</span><strong style="color:${diff>=0?'#ff4b4b':'#4b8bff'}">${diff>0?'+':''}${diff}만 원</strong></div>`;
+                }
+            });
+            const stockTotalDiff = stockNextValue - stockPrevValue;
+            const stockSectionHtml = getTotalStockValue() > 0 ? `<div style="display:flex;justify-content:space-between;border-top:1px dashed #45a29e;margin-top:6px;padding-top:6px;"><span>📈 주식 평가손익:</span><strong style="color:${stockTotalDiff>=0?'#ff4b4b':'#4b8bff'}">${stockTotalDiff>0?'+':''}${stockTotalDiff}만 원</strong></div>${stockRows}` : '';
+
+            let loanInterestRow = loanInterest > 0 ? `<div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(255,75,75,0.3);margin-top:8px;padding-top:8px;"><span>💳 대출 이자:</span><strong style="color:#ff4b4b">-${loanInterest}만 원</strong></div>` : '';
+            let reportHtml = `<div style="display:flex;justify-content:space-between;"><span>🏦 예금 이자:</span><strong style="color:#66fcf1">+${interestEarned}만 원</strong></div><div style="display:flex;justify-content:space-between;"><span>💵 환차익:</span><strong style="color:${dollarProfit>=0?'#ff4b4b':'#4b8bff'}">${dollarProfit>0?'+':''}${dollarProfit}만 원</strong></div><div style="display:flex;justify-content:space-between;"><span>🪙 금 가치변동:</span><strong style="color:${goldProfit>=0?'#ff4b4b':'#4b8bff'}">${goldProfit>0?'+':''}${goldProfit}만 원</strong></div>${stockSectionHtml}${loanInterestRow}`;
+            document.getElementById('reportContent').innerHTML = reportHtml;
+
+            const nextTurnNum = parseInt(nextData['턴']);
+            let btnText = "다음 분기로 이동 🚀";
+            if ((nextTurnNum - 1) % 4 === 0) btnText = "중간 랭킹 확인 🏆";
+            document.getElementById('reportBtn').innerText = btnText;
+            document.getElementById('turnReportModal').style.display = 'flex';
+
+            if (tradeThisTurn) totalTradeTurns++;
+            tradeThisTurn = false;
+            if (getTotalStockValue() === 0 && assets.Bank > 0) statsBankOnlyTurns++;
+
+            const newNet = playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue() - loanAmount;
+            updateStreak(newNet, prevNetWorth);
+            prevNetWorth = newNet;
+
+            isCardDrawnThisTurn = false;
+            const btn = document.getElementById('btnGoldenCard'); btn.innerText = "🃏 황금 카드 뽑기 (이번 분기 1회)"; btn.disabled = false;
+            saveGameState();
+        }
+
+        function closeTurnReportModal() {
+            document.getElementById('turnReportModal').style.display = 'none';
+            const currentTurnNum = parseInt(allData[currentTurnIndex]['턴']);
+            if ((currentTurnNum - 1) % 4 === 0) {
+                showRanking(false);
+            } else {
+                checkAndShowBreakingNews(currentTurnNum, () => showNewsFlash());
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // 📰 분기 전환 신문 오버레이
+        // ══════════════════════════════════════════
+        let _newsFlashTimer = null;
+        function showNewsFlash() {
+            const data = allData[currentTurnIndex];
+            document.getElementById('newsFlashBadge').innerText = '📰 ' + data['연도/분기'] + ' 속보';
+            document.getElementById('newsFlashHeadline').innerText = data['📰 시대 상황 (뉴스 헤드라인)'];
+            const overlay = document.getElementById('newsFlashOverlay');
+            const paper   = document.getElementById('newsFlashPaper');
+            const fill    = document.getElementById('newsFlashTimerFill');
+            paper.classList.remove('dropped', 'hiding');
+            fill.style.transition = 'none'; fill.style.transform = 'scaleX(1)';
+            overlay.classList.add('active');
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                paper.classList.add('dropped');
+                setTimeout(() => { fill.style.transition = 'transform 4s linear'; fill.style.transform = 'scaleX(0)'; }, 600);
+            }));
+            _newsFlashTimer = setTimeout(() => closeNewsFlash(), 4600);
+        }
+        function closeNewsFlash() {
+            if (_newsFlashTimer) { clearTimeout(_newsFlashTimer); _newsFlashTimer = null; }
+            const paper = document.getElementById('newsFlashPaper');
+            paper.classList.add('hiding');
+            setTimeout(() => { document.getElementById('newsFlashOverlay').classList.remove('active'); paper.classList.remove('dropped','hiding'); applyTurnData(); }, 350);
+        }
+
+        // ══════════════════════════════════════════
+        // 📡 긴급 속보
+        // ══════════════════════════════════════════
+        const BREAKING_NEWS = {
+            '1997': {
+                3:  { icon:'🏦', headline:'IMF, 한국에 구제금융 신청 권고!', sub:'외환보유고가 바닥났습니다. 정부가 IMF에 긴급 구제금융을 요청했습니다.' },
+                7:  { icon:'📈', headline:'반도체·IT 기업 외국인 매수 폭발!', sub:'외국 투자자들이 저평가된 반도체·이동통신 주식을 대거 매집하고 있습니다!' },
+                10: { icon:'🇰🇷', headline:'금 모으기 운동, 전국 확산! 경기 회복 기지개', sub:'나라 경제가 서서히 안정을 찾고 있습니다.' }
+            },
+            '2008': {
+                2:  { icon:'💥', headline:'리먼 브라더스 파산 신청! 글로벌 금융위기 시작!', sub:'전 세계 증시 동반 폭락이 예고됩니다.' },
+                5:  { icon:'🚗', headline:'원달러 환율 1500원 돌파! 수출기업 반사이익!', sub:'환율 급등으로 수출 기업들의 실적 개선이 기대됩니다.' },
+                9:  { icon:'📱', headline:'아이폰 한국 상륙! 스마트폰 혁명 시작!', sub:'통신·반도체·앱 생태계 지형이 완전히 바뀔 전망입니다.' }
+            },
+            '2020': {
+                1:  { icon:'🦠', headline:'WHO, 코로나19 팬데믹 공식 선언!', sub:'항공·여행업은 직격탄, 비대면·바이오는 폭발 성장 예고!' },
+                5:  { icon:'💉', headline:'백신 임상 3상 성공! 종식 기대감 급상승!', sub:'관련 바이오 주가가 하늘을 찌릅니다!' },
+                8:  { icon:'🔋', headline:'정부, 그린뉴딜 발표! 전기차·배터리 대규모 투자!', sub:'배터리·전기차 관련주를 주목하세요!' }
+            }
+        };
+        let _breakingNewsCallback = null;
+        function checkAndShowBreakingNews(turnNum, callback) {
+            const bnData    = window._BREAKING_NEWS || BREAKING_NEWS;
+            const stageNews = bnData[selectedStage];
+            if (stageNews && stageNews[turnNum]) {
+                const news = stageNews[turnNum];
+                document.getElementById('bnIcon').innerText     = news.icon;
+                document.getElementById('bnHeadline').innerText = news.headline;
+                document.getElementById('bnSub').innerText      = news.sub;
+                _breakingNewsCallback = callback;
+                document.getElementById('breakingNewsOverlay').classList.add('active');
+            } else { callback(); }
+        }
+        function closeBreakingNews() {
+            document.getElementById('breakingNewsOverlay').classList.remove('active');
+            if (_breakingNewsCallback) { _breakingNewsCallback(); _breakingNewsCallback = null; }
+        }
+
+        // ══════════════════════════════════════════
+        // 💳 대출 시스템
+        // ══════════════════════════════════════════
+        function takeLoan() { SFX.cash_in();
+            const amount = parseInt(document.getElementById('inLoan').value) || 0;
+            if (amount <= 0) { SFX.error(); alert('1 이상의 금액을 입력해주세요.'); return; }
+            if (loanAmount + amount > getLoanMax()) { document.getElementById('loanWarning').style.display='block'; setTimeout(()=>document.getElementById('loanWarning').style.display='none',2500); alert('대출 한도(' + getLoanMax() + '만 원) 초과!'); return; }
+            loanAmount += amount; playerCash += amount;
+            document.getElementById('inLoan').value = 0; updateUI();
+        }
+        function repayLoan() { SFX.cash_out();
+            const amount = parseInt(document.getElementById('inLoan').value) || 0;
+            if (amount <= 0) { SFX.error(); alert('1 이상의 금액을 입력해주세요.'); return; }
+            if (amount > loanAmount) { alert('상환액이 대출잔액보다 많습니다.'); return; }
+            if (amount > playerCash) { alert('현금이 부족합니다!'); return; }
+            loanAmount -= amount; playerCash -= amount;
+            document.getElementById('inLoan').value = 0; updateUI();
+        }
+        function checkBankruptcy() {
+            const net = playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue() - loanAmount;
+            const el = document.getElementById('bankruptcyWarning');
+            if (net < 0) { el.classList.add('active'); triggerBankruptcyGame(); }
+            else { el.classList.remove('active'); }
+        }
+
+        // ══════════════════════════════════════════
+        // 🔥 연속 수익 스트릭
+        // ══════════════════════════════════════════
+        let profitStreak = 0; let _streakPopupTimer = null;
+        function updateStreak(newNet, oldNet) {
+            if (newNet > oldNet + 5) profitStreak++;
+            else if (newNet < oldNet - 5) profitStreak = 0;
+            const badge = document.getElementById('streakBadge');
+            if (profitStreak >= 2) { badge.classList.add('active'); document.getElementById('streakCount').innerText = profitStreak; badge.style.background = profitStreak >= 5 ? 'linear-gradient(135deg,#ff0000,#ff6b00)' : 'linear-gradient(135deg,#ff6b00,#ff4b00)'; }
+            else badge.classList.remove('active');
+            const milestones = { 2:{title:'🔥 2연속 수익!',sub:'좋은 흐름이야!'}, 3:{title:'🔥🔥 3연속 수익!',sub:'수익 행진 중!'}, 5:{title:'🔥🔥🔥 5연속 수익!!!',sub:'전설의 투자자 등극!'} };
+            if (milestones[profitStreak]) showStreakPopup(milestones[profitStreak].title, milestones[profitStreak].sub);
+        }
+        function showStreakPopup(title, sub) {
+            if (_streakPopupTimer) clearTimeout(_streakPopupTimer);
+            document.getElementById('streakPopupTitle').innerText = title;
+            document.getElementById('streakPopupSub').innerText   = sub;
+            const el = document.getElementById('streakPopup'); el.classList.add('active');
+            _streakPopupTimer = setTimeout(() => el.classList.remove('active'), 2800);
+        }
+
+        // ══════════════════════════════════════════
+        // 📓 투자 일지
+        // ══════════════════════════════════════════
+        let journalEntries = [];
+        function openJournal() {
+            renderJournal();
+            const data = allData[currentTurnIndex];
+            document.getElementById('journalInput').placeholder = `[${data['연도/분기']}] 이번 분기 투자 전략이나 생각을 적어봐요...`;
+            document.getElementById('journalInput').value = '';
+            const turnNum = parseInt(data['턴']);
+            const existing = journalEntries.find(e => e.turn === turnNum);
+            if (existing) document.getElementById('journalInput').value = existing.note;
+            document.getElementById('journalModal').style.display = 'flex';
+        }
+        function closeJournal() { document.getElementById('journalModal').style.display = 'none'; }
+        function saveJournalEntry() {
+            const note = document.getElementById('journalInput').value.trim();
+            if (!note) { alert('내용을 입력해주세요!'); return; }
+            const data = allData[currentTurnIndex]; const turnNum = parseInt(data['턴']);
+            const netWorth = parseFloat(document.getElementById('totalNetWorth').innerText) || 0;
+            const idx = journalEntries.findIndex(e => e.turn === turnNum);
+            const entry = { turn: turnNum, period: data['연도/분기'], note, netWorth };
+            if (idx >= 0) journalEntries[idx] = entry; else journalEntries.push(entry);
+            journalEntries.sort((a,b) => a.turn - b.turn);
+            renderJournal(); document.getElementById('journalInput').value = '';
+            document.getElementById('journalInput').placeholder = '저장되었습니다! ✅';
+            setTimeout(() => document.getElementById('journalInput').placeholder = '다음 메모를 입력해봐요...', 1500);
+            saveGameState();
+        }
+        function renderJournal() {
+            const list = document.getElementById('journalList');
+            if (journalEntries.length === 0) { list.innerHTML = '<div style="color:#a4b0be; text-align:center; padding:30px;">아직 기록이 없어요.<br>매 분기마다 투자 생각을 남겨봐요! 📝</div>'; return; }
+            list.innerHTML = journalEntries.map(e => {
+                const rateColor = e.netWorth >= 1000 ? '#ff4b4b' : '#4b8bff';
+                const rateSign  = e.netWorth >= 1000 ? '+' : '';
+                const rate = (((e.netWorth - 1000) / 1000) * 100).toFixed(1);
+                return `<div class="journal-entry"><div class="je-turn">${e.turn}턴 · ${e.period}</div><div class="je-note">${e.note.replace(/\n/g,'<br>')}</div><div class="je-profit" style="color:${rateColor}">총자산 ${e.netWorth}만 원 (${rateSign}${rate}%)</div></div>`;
+            }).join('');
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // ══════════════════════════════════════════
+        // ⚡ 타임머신 고장 이벤트
+        // ══════════════════════════════════════════
+        let _glitchUsed = false; let _glitchTurn = -1; let _glitchTimer = null;
+        function initGlitchTurn() { _glitchTurn = Math.floor(Math.random() * 11) + 1; }
+        function checkGlitchEvent(turnNum) {
+            if (_glitchUsed || turnNum !== _glitchTurn) return;
+            if (!allData[currentTurnIndex + 1]) return;
+            _glitchUsed = true; setTimeout(() => showGlitchEvent(), 300);
+        }
+        function showGlitchEvent() {
+            const nextData = allData[currentTurnIndex + 1];
+            document.getElementById('glitchPreview').innerText = nextData['📰 시대 상황 (뉴스 헤드라인)'];
+            document.getElementById('glitchCountdown').innerText = '5';
+            document.getElementById('glitchOverlay').classList.add('active');
+            let remaining = 5;
+            _glitchTimer = setInterval(() => { remaining--; document.getElementById('glitchCountdown').innerText = remaining; if (remaining <= 0) { clearInterval(_glitchTimer); closeGlitchEvent(); } }, 1000);
+        }
+        function closeGlitchEvent() { clearInterval(_glitchTimer); document.getElementById('glitchOverlay').classList.remove('active'); }
+
+        // ══════════════════════════════════════════
+        // 📦 파산 미니게임
+        // ══════════════════════════════════════════
+        let _bgActive=false; let _bgShown=false; let _bgClicks=0; let _bgTimerHandle=null; let _bgTimeLeft=10;
+        function triggerBankruptcyGame() {
+            if (_bgShown || _bgActive) return; _bgShown=true; _bgActive=true; _bgClicks=0; _bgTimeLeft=10;
+            document.getElementById('bgTimer').innerText='10'; document.getElementById('bgCount').innerText='클릭 횟수: 0회 (+0만 원)';
+            document.getElementById('bgResult').style.display='none'; document.getElementById('bgCloseBtn').style.display='none';
+            document.getElementById('bgClickZone').style.pointerEvents='auto'; document.getElementById('bgClickZone').style.opacity='1';
+            document.getElementById('bankruptcyGame').classList.add('active');
+            _bgTimerHandle = setInterval(() => { _bgTimeLeft--; document.getElementById('bgTimer').innerText=_bgTimeLeft; if(_bgTimeLeft<=3) document.getElementById('bgTimer').style.color='#ff0000'; if(_bgTimeLeft<=0) bgFinish(); }, 1000);
+        }
+        function bgClick() { if(!_bgActive) return; _bgClicks++; document.getElementById('bgCount').innerText=`클릭 횟수: ${_bgClicks}회 (+${_bgClicks*10}만 원)`; document.getElementById('bgClickIcon').innerText=['💥','👊','🤜','💢'][_bgClicks%4]; }
+        function bgFinish() { clearInterval(_bgTimerHandle); _bgActive=false; document.getElementById('bgClickZone').style.pointerEvents='none'; document.getElementById('bgClickZone').style.opacity='0.5'; const earned=_bgClicks*10; playerCash+=earned; updateUI(); document.getElementById('bgResult').style.display='block'; document.getElementById('bgResult').innerText=`🎉 구호금 +${earned}만 원 지급!`; document.getElementById('bgCloseBtn').style.display='inline-block'; document.getElementById('bgTimer').innerText='종료'; }
+        function closeBankruptcyGame() { document.getElementById('bankruptcyGame').classList.remove('active'); }
+
+        // ══════════════════════════════════════════
+        // 💀 어둠의 브로커
+        // ══════════════════════════════════════════
+        let _darkBrokerUsed=false; let _darkBrokerTurn=-1;
+        function initDarkBrokerTurn() { _darkBrokerTurn = Math.floor(Math.random()*10)+2; }
+        function checkDarkBroker(turnNum) {
+            if (_darkBrokerUsed || turnNum !== _darkBrokerTurn) return;
+            if (Math.floor(playerCash/2) <= 0) return;
+            setTimeout(() => openDarkBroker(), 800);
+        }
+        function openDarkBroker() {
+            const stake = Math.floor(playerCash/2);
+            document.getElementById('dbStakeText').innerText = `베팅: 현금 ${stake}만 원 → 성공 시 +${stake*3}만 원`;
+            document.querySelector('.db-buttons').style.display='flex';
+            document.getElementById('darkBrokerResult').style.display='none';
+            document.getElementById('darkBrokerOverlay').classList.add('active');
+        }
+        function darkBrokerAccept() {
+            const stake=Math.floor(playerCash/2); const win=Math.random()<0.5;
+            document.querySelector('.db-buttons').style.display='none';
+            const rb=document.getElementById('darkBrokerResult'); rb.style.display='flex';
+            const ri=document.getElementById('dbResultIcon'); const rt=document.getElementById('dbResultText'); const rs=document.getElementById('dbResultSub');
+            if (win) { playerCash+=stake*3; ri.innerText='🎰'; rt.className='db-result-text win'; rt.innerText=`+${stake*3}만 원 획득!`; rs.innerText='💀 "약속은 지키지..."'; launchConfetti(); }
+            else      { playerCash-=stake;   ri.innerText='💸'; rt.className='db-result-text lose'; rt.innerText=`-${stake}만 원 증발...`;   rs.innerText='💀 "거래는 끝났다."';   launchDudEffect(); }
+            _darkBrokerUsed=true; updateUI();
+        }
+        function darkBrokerRefuse() { _darkBrokerUsed=true; closeDarkBroker(); }
+        function closeDarkBroker() { document.getElementById('darkBrokerOverlay').classList.remove('active'); stopConfetti(); }
+
+        // ══════════════════════════════════════════
+        // 💾 게임 상태 저장/불러오기
+        // ══════════════════════════════════════════
+        async function saveGameState() {
+            const pName = document.getElementById('playerName').value.trim();
+            if (!pName) return;
+            const state = { action:'saveState', playerName:pName, stage:selectedStage, group:selectedGroup, turnIndex:currentTurnIndex, playerCash, assets, ownedStocks, avgPrices, totalInvested, loanAmount, journalEntries, profitStreak, prevNetWorth, totalTradeTurns, statsBankOnlyTurns, statsHighBuyLowSell, _darkBrokerUsed, _glitchUsed, _bgShown };
+            try { await fetch(API_URL, { method:'POST', body:JSON.stringify(state) }); } catch(e) { console.warn('저장 실패:', e); }
+        }
+        async function loadGameState(playerName, stage) {
+            try {
+                const res  = await fetch(API_URL + '?action=loadState&playerName=' + encodeURIComponent(playerName) + '&stage=' + encodeURIComponent(stage));
+                const data = await res.json();
+                if (!data || data.error || !data.turnIndex) { applyTurnData(); return; }
+                currentTurnIndex    = parseInt(data.turnIndex)    || 0;
+                playerCash          = parseFloat(data.playerCash)  || 1000;
+                assets              = data.assets        || {Bank:0,Dollar:0,Gold:0};
+                ownedStocks         = data.ownedStocks   || {};
+                avgPrices           = data.avgPrices     || {};
+                totalInvested       = data.totalInvested || {};
+                loanAmount          = parseFloat(data.loanAmount) || 0;
+                journalEntries      = data.journalEntries || [];
+                profitStreak        = parseInt(data.profitStreak) || 0;
+                prevNetWorth        = parseFloat(data.prevNetWorth) || 1000;
+                totalTradeTurns     = parseInt(data.totalTradeTurns) || 0;
+                statsBankOnlyTurns  = parseInt(data.statsBankOnlyTurns) || 0;
+                statsHighBuyLowSell = !!data.statsHighBuyLowSell;
+                _darkBrokerUsed     = !!data._darkBrokerUsed;
+                _glitchUsed         = !!data._glitchUsed;
+                _bgShown            = !!data._bgShown;
+                availableStocks.forEach(st => { if(!ownedStocks[st]) ownedStocks[st]=0; if(!avgPrices[st]) avgPrices[st]=0; if(!totalInvested[st]) totalInvested[st]=0; });
+                applyTurnData();
+                const turnLabel = allData[currentTurnIndex]?.['연도/분기'] || '';
+                setTimeout(() => { const t=document.createElement('div'); t.innerText=`💾 ${turnLabel} 데이터 복원 완료!`; t.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1a4a1a;color:#66ff88;border:1px solid #44cc66;border-radius:8px;padding:12px 28px;font-size:1em;font-weight:900;z-index:9999;'; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }, 500);
+            } catch(e) { console.warn('불러오기 실패:', e); applyTurnData(); }
+        }
+
+        // ══════════════════════════════════════════
+        // 📊 매수가능 주수 표시
+        // ══════════════════════════════════════════
+        function updateAffordableShares() {
+            const el = document.getElementById('affordableShares');
+            if (!el || !currentSelectedStock || !currentPrices[currentSelectedStock]) { if(el) el.innerText=''; return; }
+            const price = currentPrices[currentSelectedStock];
+            if (price <= 0) { el.innerText=''; return; }
+            el.innerText = ' (최대 ' + Math.floor(playerCash / price) + '주 가능)';
+        }
+
+        function getTotalStockValue() { let v=0; availableStocks.forEach(st => { v+=ownedStocks[st]*currentPrices[st]; }); return v; }
+        function initDonutChart() { const ctx=document.getElementById('portfolioChart').getContext('2d'); donutChartInstance=new Chart(ctx,{type:'doughnut',data:{labels:['현금','은행 예금','달러','금괴','주식(총합)'],datasets:[{data:[1000,0,0,0,0],backgroundColor:['#999999','#007AFF','#34C759','#FFCC00','#FF3B30'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#c5c6c7',font:{size:14}}}}}}); }
+        function updateDonutChart() { if(!donutChartInstance) return; donutChartInstance.data.datasets[0].data=[playerCash,assets.Bank,assets.Dollar,assets.Gold,getTotalStockValue()]; donutChartInstance.update(); }
+
+        // ══════════════════════════════════════════
+        // 🃏 황금카드 가챠 시스템
+        // ══════════════════════════════════════════
+        let _gachaCards=[]; let _gachaPicked=false;
+        function drawGoldenCard() { SFX.gacha();
+            if (isCardDrawnThisTurn) return;
+            const events = goldenCardEvents;
+            const reward = events.reward[Math.floor(Math.random()*events.reward.length)];
+            const info   = getInfoCardForCurrentTurn();
+            const dud    = events.dud[Math.floor(Math.random()*events.dud.length)];
+            _gachaCards  = [reward, info, dud].sort(() => Math.random()-0.5);
+            _gachaPicked = false;
+            const container = document.getElementById('gachaCards'); container.innerHTML='';
+            _gachaCards.forEach((card,i) => {
+                const el=document.createElement('div'); el.className='gacha-card'; el.id='gcard-'+i;
+                el.innerHTML=`<div class="gacha-card-inner"><div class="gacha-card-back"><div class="card-back-icon">🃏</div><div class="card-back-label">GOLDEN CARD</div></div><div class="gacha-card-front type-${card.type}"><div class="cf-icon">${card.icon}</div><div class="cf-type">${card.type==='reward'?'💰 보상':card.type==='info'?'📋 정보':'💀 꽝'}</div><div class="cf-title">${card.title}</div><div class="cf-desc">${card.desc.replace(/\n/g,'<br>')}</div></div></div>`;
+                el.addEventListener('click',()=>pickGachaCard(i)); container.appendChild(el);
+                el.style.opacity='0'; el.style.transform='translateY(60px)';
+                setTimeout(()=>{ el.style.transition='opacity 0.4s ease, transform 0.4s ease'; el.style.opacity='1'; el.style.transform=''; }, 100+i*150);
+            });
+            document.getElementById('gachaResultBox').style.display='none';
+            document.getElementById('gachaOverlay').classList.add('active');
+        }
+        function pickGachaCard(idx) { SFX.pick();
+            if (_gachaPicked) return; _gachaPicked=true;
+            const card = _gachaCards[idx];
+            const el=document.getElementById('gcard-'+idx); el.classList.add('flipped','disabled');
+            setTimeout(() => {
+                document.querySelectorAll('.gacha-card').forEach((c,i) => {
+                    if(i!==idx) { const front=c.querySelector('.gacha-card-front'); if(front){const d=front.querySelector('.cf-desc');const t=front.querySelector('.cf-title');if(d){d.innerText='';d.style.display='none';}if(t){t.innerText='?';t.style.color='rgba(255,255,255,0.25)';}} c.classList.add('flipped','disabled'); c.style.opacity='0.45'; c.style.filter='grayscale(0.6)'; }
+                });
+            }, 400);
+            setTimeout(() => {
+                card.action();
+                const rb=document.getElementById('gachaResultBox'); const rt=document.getElementById('gachaResultText'); rb.style.display='block';
+                if (card.type==='reward')      { rt.innerText=`🎉 ${card.title} 획득!`; rt.style.background='linear-gradient(135deg,#2d1f00,#3d2900)'; rt.style.color='#ffd700'; rt.style.border='2px solid #ffd700'; launchConfetti(); }
+                else if (card.type==='info')   { rt.innerText=`📋 ${card.title} 획득!`; rt.style.background='linear-gradient(135deg,#001a1a,#001f1f)'; rt.style.color='#66fcf1'; rt.style.border='2px solid #66fcf1'; }
+                else                            { rt.innerText=`💀 꽝! ${card.title}`;   rt.style.background='linear-gradient(135deg,#1a0000,#200000)'; rt.style.color='#ff4b4b'; rt.style.border='2px solid #ff4b4b'; launchDudEffect(); }
+                isCardDrawnThisTurn=true;
+                const btn=document.getElementById('btnGoldenCard'); btn.innerText='🃏 황금 카드 (사용완료)'; btn.disabled=true;
+                updateUI();
+            }, 800);
+        }
+        function closeGacha() { document.getElementById('gachaOverlay').classList.remove('active'); stopConfetti(); }
+
+        // ── confetti ──
+        let _confettiAnim=null; let _confettiParticles=[];
+        function launchConfetti() {
+            const canvas=document.getElementById('confettiCanvas'); const ctx=canvas.getContext('2d');
+            canvas.width=window.innerWidth; canvas.height=window.innerHeight; canvas.style.display='block';
+            const COLORS=['#ffd700','#fff700','#ffaa00','#ffe066','#ffffff','#ff8c00'];
+            _confettiParticles=Array.from({length:120},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height-canvas.height,r:Math.random()*7+3,d:Math.random()*120+60,color:COLORS[Math.floor(Math.random()*COLORS.length)],tilt:Math.random()*10-5,tiltAngle:0,tiltAngleIncrement:Math.random()*0.07+0.05,vx:Math.random()*4-2,vy:Math.random()*3+2}));
+            let frame=0;
+            function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); _confettiParticles.forEach(p=>{p.tiltAngle+=p.tiltAngleIncrement;p.x+=p.vx+Math.sin(frame*0.01)*0.5;p.y+=p.vy;p.tilt=Math.sin(p.tiltAngle)*12;if(p.y>canvas.height+20){p.y=-10;p.x=Math.random()*canvas.width;}ctx.beginPath();ctx.lineWidth=p.r;ctx.strokeStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;ctx.moveTo(p.x+p.tilt+p.r/4,p.y);ctx.lineTo(p.x+p.tilt,p.y+p.tilt+p.d/5);ctx.stroke();}); frame++; _confettiAnim=requestAnimationFrame(draw); if(frame>220) stopConfetti(); }
+            if(_confettiAnim) cancelAnimationFrame(_confettiAnim); draw();
+        }
+        function stopConfetti() { if(_confettiAnim){cancelAnimationFrame(_confettiAnim);_confettiAnim=null;} const c=document.getElementById('confettiCanvas'); if(c){c.style.display='none';c.getContext('2d').clearRect(0,0,c.width,c.height);} }
+        function launchDudEffect() { const el=document.getElementById('dudEffect'); el.style.display='block'; el.classList.remove('active'); void el.offsetWidth; el.classList.add('active'); setTimeout(()=>{el.classList.remove('active');el.style.display='none';},700); }
+
+        function tradeAsset(type, direction) { direction > 0 ? SFX.cash_in() : SFX.cash_out();
+            if (_isReady) { alert('준비완료 상태에서는 투자할 수 없습니다!'); return; }
+            let amount = parseInt(document.getElementById('in'+type).value)||0;
+            if(amount<=0){alert("1 이상의 금액을 입력해주세요.");return;}
+            if(direction===1){if(playerCash>=amount){playerCash-=amount;assets[type]+=amount;}else{alert("현금이 부족합니다!");return;}}
+            else{if(assets[type]>=amount){playerCash+=amount;assets[type]-=amount;}else{alert("잔고가 부족합니다!");return;}}
+            document.getElementById('in'+type).value=0; updateUI();
+        }
+
+        function initChart() { var options={series:[{data:[]}],chart:{type:'candlestick',height:300,width:'100%',toolbar:{show:false},animations:{enabled:false}},plotOptions:{candlestick:{colors:{upward:'#ff4b4b',downward:'#4b8bff'}}},xaxis:{type:'category',tickPlacement:'between',labels:{show:true,hideOverlappingLabels:false,style:{colors:'#000',fontSize:'11px',fontWeight:'bold'}}},yaxis:{tooltip:{enabled:true},labels:{style:{colors:'#000'},formatter:function(val){return val.toFixed(1)+"만";}}},grid:{borderColor:'#e0e0e0',padding:{bottom:10}},annotations:{yaxis:[],points:[]}}; chartInstance=new ApexCharts(document.querySelector("#chart"),options); chartInstance.render(); }
+        function openStockModal() {
+            if (_isReady) { alert('준비완료 상태에서는 거래소에 접근할 수 없습니다!'); return; }
+            document.getElementById('stockModal').style.display='flex'; updateUI();
+        }
+        function closeStockModal() { document.getElementById('stockModal').style.display='none'; updateUI(); }
+        function selectStock(key,displayName) {
+            currentSelectedStock=key;
+            document.querySelectorAll('.stock-item').forEach(el=>el.classList.remove('active')); document.getElementById('btn-'+key).classList.add('active');
+            document.getElementById('selectedStockName').innerText=displayName; document.getElementById('selectedStockPrice').innerText=currentPrices[key].toFixed(1); document.getElementById('ownedAmount').innerText=ownedStocks[key]; document.getElementById('avgPriceDisplay').innerText=avgPrices[key].toFixed(1); updateAffordableShares();
+            let chartData=[];
+            for(let i=0;i<=currentTurnIndex;i++){let d=allData[i];let open=parseNum(d[key+'_시가'])/10000;let high=parseNum(d[key+'_고가'])/10000;let low=parseNum(d[key+'_저가'])/10000;let close=parseNum(d[key+'_종가'])/10000;let dateLabel=String(d['연도/분기']||'');if(!dateLabel.trim())dateLabel=`과거 ${i-currentTurnIndex}턴`;if(open>0)chartData.push({x:dateLabel,y:[open,high,low,close]});}
+            let pointsAnnotations=[]; tradeHistory[key].forEach(trade=>{pointsAnnotations.push({x:trade.x,y:trade.price,marker:{size:6,fillColor:trade.type==='B'?'#ff4b4b':'#4b8bff',strokeColor:'#fff',strokeWidth:2},label:{borderColor:trade.type==='B'?'#ff4b4b':'#4b8bff',style:{color:'#fff',background:trade.type==='B'?'#ff4b4b':'#4b8bff',fontSize:'12px',fontWeight:'bold'},text:trade.type}});});
+            let yaxisAnnotations=[]; if(ownedStocks[key]>0){yaxisAnnotations.push({y:avgPrices[key],strokeDashArray:5,borderColor:'#bc13fe',label:{borderColor:'#bc13fe',style:{color:'#fff',background:'#bc13fe',fontWeight:'bold'},text:'평단가: '+avgPrices[key].toFixed(1)}});}
+            chartInstance.updateOptions({annotations:{points:pointsAnnotations,yaxis:yaxisAnnotations}}); chartInstance.updateSeries([{data:chartData}]);
+        }
+        function buyStock() { SFX.buy();
+            if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
+            if(!currentSelectedStock){alert("종목 선택!");return;}
+            let qty=parseInt(document.getElementById('tradeQuantity').value);let cost=qty*currentPrices[currentSelectedStock];let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
+            if(playerCash>=cost){playerCash-=cost;ownedStocks[currentSelectedStock]+=qty;totalInvested[currentSelectedStock]+=cost;avgPrices[currentSelectedStock]=totalInvested[currentSelectedStock]/ownedStocks[currentSelectedStock];tradeHistory[currentSelectedStock].push({x:dateLabel,type:'B',price:currentPrices[currentSelectedStock]});statsStocksBought[currentSelectedStock]=(statsStocksBought[currentSelectedStock]||0)+1;lastBuyPrice[currentSelectedStock]=currentPrices[currentSelectedStock];tradeThisTurn=true;alert(`${qty}주 매수 완료!`);selectStock(currentSelectedStock,document.getElementById('selectedStockName').innerText);updateUI();}
+            else{alert("현금 부족!");}
+        }
+        function sellStock() { SFX.sell();
+            if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
+            if(!currentSelectedStock){alert("종목 선택!");return;}
+            let qty=parseInt(document.getElementById('tradeQuantity').value);let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
+            if(ownedStocks[currentSelectedStock]>=qty){let revenue=qty*currentPrices[currentSelectedStock];playerCash+=revenue;let costBasis=avgPrices[currentSelectedStock]*qty;totalInvested[currentSelectedStock]-=costBasis;ownedStocks[currentSelectedStock]-=qty;if(ownedStocks[currentSelectedStock]===0){avgPrices[currentSelectedStock]=0;totalInvested[currentSelectedStock]=0;}tradeHistory[currentSelectedStock].push({x:dateLabel,type:'S',price:currentPrices[currentSelectedStock]});statsStocksSold[currentSelectedStock]=(statsStocksSold[currentSelectedStock]||0)+1;if(lastBuyPrice[currentSelectedStock]&&currentPrices[currentSelectedStock]<lastBuyPrice[currentSelectedStock])statsHighBuyLowSell=true;tradeThisTurn=true;alert(`${qty}주 매도 완료!`);selectStock(currentSelectedStock,document.getElementById('selectedStockName').innerText);updateUI();}
+            else{alert("보유 주식이 부족합니다!");}
+        }
+
+        // ══════════════════════════════════════════
+        // 🎖️ 엔딩 업적 시스템
+        // ══════════════════════════════════════════
+        const ACHIEVEMENTS = [
+            { id:'diamond_hand', icon:'💎', name:'다이아몬드 손', desc:'한 종목만 매수하고 단 한 번도 팔지 않고 끝까지 버텼습니다!', check: () => { const bk=Object.keys(statsStocksBought); const sk=Object.keys(statsStocksSold); return bk.length===1&&sk.length===0&&ownedStocks[bk[0]]>0; } },
+            { id:'human_indicator', icon:'📉', name:'인간 지표', desc:'고점에서 사고 저점에서 팔았습니다. 반대로만 했어도 부자가 됐을 텐데...', check: () => statsHighBuyLowSell&&((playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue())<900) },
+            { id:'bank_villain', icon:'🏦', name:'예금 빌런', desc:'오직 은행 예금만 믿은 겁쟁이 요원. 안정적이지만 아쉽네요.', check: () => { const st=Object.values(statsStocksBought).reduce((a,b)=>a+b,0); return st===0&&assets.Bank>0&&statsBankOnlyTurns>=8; } },
+            { id:'scalping_god', icon:'⚡', name:'단타의 신', desc:'매 분기마다 주식을 사고팔며 시장을 휘저었습니다!', check: () => totalTradeTurns>=9 },
+            { id:'lucky_star', icon:'🌟', name:'행운의 별', desc:'별다른 전략 없이도 자산이 2배 이상! 타고난 운의 요원!', check: () => { const net=playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue(); return net>=2000&&Object.values(statsStocksBought).reduce((a,b)=>a+b,0)<=3; } },
+            { id:'gold_hoarder', icon:'🪙', name:'금괴 수집가', desc:'금 본위제를 신봉하는 요원! 금괴 200만 원 이상 보유!', check: () => assets.Gold>=200 },
+            { id:'dollar_diplomat', icon:'💵', name:'달러 외교관', desc:'달러 보유액 300만 원 이상으로 마감!', check: () => assets.Dollar>=300 },
+        ];
+        let _pendingAchCallback=null;
+        function evaluateAchievement(callback) {
+            const earned = ACHIEVEMENTS.find(a=>a.check());
+            const net = playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue();
+            const tier = getTier(net);
+            document.getElementById('achIcon').innerText  = earned ? earned.icon : tier.icon;
+            document.getElementById('achName').innerText  = earned ? earned.name : tier.label+' 요원';
+            document.getElementById('achDesc').innerText  = earned ? earned.desc : `최종 자산 ${Math.floor(net)}만 원으로 게임을 마쳤습니다.`;
+            _pendingAchCallback = callback;
+            SFX.fanfare(); document.getElementById('achievementModal').classList.add('active');
+        }
+        function closeAchievementModal() { document.getElementById('achievementModal').classList.remove('active'); if(_pendingAchCallback){_pendingAchCallback();_pendingAchCallback=null;} }
+
+        // ══════════════════════════════════════════
+        // 🥚 이스터에그
+        // ══════════════════════════════════════════
+        const EASTER_EGGS = [
+            { code:'쇼미더머니', msg:'💸 쇼미더머니! 지원금 500만 원 입금!', action:()=>{ playerCash+=500; updateUI(); } },
+            { code:'무한도전',   msg:'🏃 무한도전 정신! 현금 200만 원 충전!', action:()=>{ playerCash+=200; updateUI(); } },
+            { code:'버핏',       msg:'🧓 워런 버핏의 기운! 금괴 +150만 원!',  action:()=>{ assets.Gold+=150; updateUI(); } },
+            { code:'환율왕',     msg:'💵 환율의 신 강림! 달러 +200만 원!',    action:()=>{ assets.Dollar+=200; updateUI(); } },
+            { code:'홍길동',     msg:'🦸 홍길동 등장! 현금 +300만 원!',       action:()=>{ playerCash+=300; updateUI(); } },
+        ];
+        let eggToastTimer=null;
+        document.addEventListener('DOMContentLoaded',()=>{
+            const input=document.getElementById('playerName');
+            if(input) input.addEventListener('input',()=>{
+                const val=input.value.trim();
+                const eggList=window._EASTER_EGGS ? window._EASTER_EGGS.map(e=>({...e,action:()=>{if(e.actionType==='cash'){playerCash+=e.amount;updateUI();}if(e.actionType==='gold'){assets.Gold+=e.amount;updateUI();}if(e.actionType==='dollar'){assets.Dollar+=e.amount;updateUI();}}})) : EASTER_EGGS;
+                const egg=eggList.find(e=>e.code===val);
+                if(egg){ input.value=''; if(allData.length>0){egg.action();showEggToast(egg.msg);}else{showEggToast('🥚 이스터에그 발견! 게임 시작 후 자동 적용됩니다.');window._pendingEgg=egg;} }
+            });
+        });
+        function showEggToast(msg) { if(eggToastTimer) clearTimeout(eggToastTimer); const t=document.getElementById('eggToast'); t.innerText=msg; t.style.display='block'; eggToastTimer=setTimeout(()=>{t.style.display='none';},3000); }
+
+        // ══════════════════════════════════════════
+        // 🏆 티어 시스템
+        // ══════════════════════════════════════════
+        const TIERS = [
+            { key:'bronze',   min:0,    max:1499,     icon:'🥉', label:'브론즈',   cls:'tier-bronze'   },
+            { key:'silver',   min:1500, max:2499,     icon:'🥈', label:'실버',     cls:'tier-silver'   },
+            { key:'gold',     min:2500, max:3999,     icon:'🥇', label:'골드',     cls:'tier-gold'     },
+            { key:'platinum', min:4000, max:5999,     icon:'💠', label:'플래티넘', cls:'tier-platinum' },
+            { key:'diamond',  min:6000, max:8999,     icon:'💎', label:'다이아',   cls:'tier-diamond'  },
+            { key:'legend',   min:9000, max:Infinity, icon:'👑', label:'레전드',  cls:'tier-legend'   },
+        ];
+        function getTier(netWorth) {
+            const list = window._TIERS || TIERS;
+            return list.find(t => netWorth>=t.min && netWorth<(t.max===null?Infinity:t.max)) || list[0];
+        }
+        function getTierHtml(netWorth) {
+            const t = getTier(netWorth);
+            return `<span class="rank-tier-badge rank-tier-${t.key}">${t.icon} ${t.label}</span>`;
+        }
+        function updateTierBadge(netWorth, animate) {
+            const tier=getTier(netWorth); const badge=document.getElementById('tierBadge'); if(!badge) return;
+            if(animate && tier.key!==currentTier){ const prev=TIERS.find(t=>t.key===currentTier); const isUp=TIERS.indexOf(tier)>TIERS.indexOf(prev); if(isUp) showTierUp(tier); }
+            currentTier=tier.key; badge.className='tier-'+tier.key; badge.id='tierBadge'; badge.innerHTML=tier.icon+' '+tier.label;
+        }
+        function showTierUp(tier) { SFX.tier_up(); const ov=document.getElementById('tierUpOverlay'); document.getElementById('tierUpText').innerText='TIER UP! '+tier.icon; document.getElementById('tierUpSub').innerText=tier.label+' 요원으로 승격!'; ov.classList.add('active'); setTimeout(()=>ov.classList.remove('active'),2200); }
+
+        function updateUI(triggerEffect) {
+            document.getElementById('displayCash').innerText=Math.floor(playerCash);
+            document.getElementById('modalCash').innerText=Math.floor(playerCash);
+            document.getElementById('valBank').innerText=Math.floor(assets.Bank);
+            document.getElementById('valDollar').innerText=Math.floor(assets.Dollar);
+            document.getElementById('valGold').innerText=Math.floor(assets.Gold);
+            let stockVal=getTotalStockValue(); document.getElementById('stockTotalValue').innerText=Math.floor(stockVal);
+            const holdingsEl=document.getElementById('stockHoldingsList');
+            if(holdingsEl){ const held=availableStocks.filter(st=>ownedStocks[st]>0); if(held.length===0){holdingsEl.style.display='none';}else{holdingsEl.style.display='flex';holdingsEl.innerHTML=held.map(st=>{const val=Math.floor(ownedStocks[st]*currentPrices[st]);const avg=avgPrices[st]||0;const gain=avg>0?((currentPrices[st]-avg)/avg*100):0;const color=gain>=0?'#ff4b4b':'#4b8bff';const sign=gain>=0?'+':'';return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88em;padding:3px 2px;"><span style="color:#c5c6c7;">ㄴ ${st} <span style="color:#a4b0be;">${ownedStocks[st]}주</span></span><span><strong style="color:#4b8bff;">${val}만</strong> <span style="color:${color};font-size:0.9em;">(${sign}${gain.toFixed(1)}%)</span></span></div>`;}).join('');} }
+            let netWorth=playerCash+assets.Bank+assets.Dollar+assets.Gold+stockVal; document.getElementById('totalNetWorth').innerText=Math.floor(netWorth);
+            let returnRate=((netWorth-1000)/1000)*100; let rateElem=document.getElementById('totalReturnRate');
+            if(returnRate>0){rateElem.innerText='(+'+returnRate.toFixed(1)+'%)';rateElem.style.color='#ff4b4b';}
+            else if(returnRate<0){rateElem.innerText='('+returnRate.toFixed(1)+'%)';rateElem.style.color='#4b8bff';}
+            else{rateElem.innerText='(0.0%)';rateElem.style.color='#a4b0be';}
+            const loanEl=document.getElementById('valLoan'); if(loanEl) loanEl.innerText=loanAmount;
+            checkBankruptcy(); updateTierBadge(netWorth,triggerEffect); updateDonutChart();
+        }
+
+        // ══════════════════════════════════════════
+        // 🏆 랭킹 화면 (그룹 탭 / 역대 탭 분리)
+        // ══════════════════════════════════════════
+        let _rankingIsFinal = false;
+        let _rankingFinalAsset = 0;
+        let _rankingPName = '';
+        let _currentRankingTab = 'group';
+
+        async function showRanking(isFinal) {
+            let finalAsset = Math.floor(playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue());
+            let pName = document.getElementById('playerName').value.trim();
+            _rankingIsFinal   = isFinal;
+            _rankingFinalAsset = finalAsset;
+            _rankingPName     = pName;
+            if (isFinal) {
+                evaluateAchievement(() => _doShowRanking(isFinal, finalAsset, pName));
+            } else {
+                _doShowRanking(isFinal, finalAsset, pName);
+            }
+        }
+
+        function switchRankingTab(tab) {
+            _currentRankingTab = tab;
+            const btnGroup = document.getElementById('tabBtnGroup');
+            const btnAll   = document.getElementById('tabBtnAll');
+            if (tab === 'group') {
+                btnGroup.style.background = '#bc13fe'; btnGroup.style.color = '#000';
+                btnAll.style.background   = 'transparent'; btnAll.style.color = '#45a29e';
+                document.getElementById('rankingColLabel').innerText = '그룹';
+            } else {
+                btnAll.style.background   = '#45a29e'; btnAll.style.color = '#000';
+                btnGroup.style.background = 'transparent'; btnGroup.style.color = '#bc13fe';
+                document.getElementById('rankingColLabel').innerText = '시나리오';
+            }
+            _loadRankingData(tab);
+        }
+
+        async function _doShowRanking(isFinal, finalAsset, pName) {
+            showScreen('ranking-screen');
+            _currentRankingTab = 'group';
+            // 탭 초기화
+            document.getElementById('tabBtnGroup').style.background = '#bc13fe';
+            document.getElementById('tabBtnGroup').style.color = '#000';
+            document.getElementById('tabBtnAll').style.background = 'transparent';
+            document.getElementById('tabBtnAll').style.color = '#45a29e';
+            document.getElementById('rankingColLabel').innerText = '그룹';
+
+            let btnAction = document.getElementById('btnRankingAction');
+            if (isFinal) {
+                document.getElementById('rankingTitle').innerText    = "🏆 명예의 전당 (최종 랭킹)";
+                document.getElementById('rankingSubtitle').innerText = `[${selectedGroup}] 요원들의 최종 성적입니다.`;
+                btnAction.innerText = "🔄 메인 화면으로";
+                btnAction.onclick   = () => location.reload();
+            } else {
+                let yearCount = Math.floor(currentTurnIndex / 4) + 1;
+                document.getElementById('rankingTitle').innerText    = `📊 ${yearCount}년차 중간 랭킹`;
+                document.getElementById('rankingSubtitle').innerText = `[${selectedGroup}] ${pName}님의 임시 순위`;
+                btnAction.innerText = "➡️ 다음 분기로 타임워프";
+                btnAction.onclick   = () => { showScreen('game-screen'); applyTurnData(); };
+            }
+            document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
+
+            try {
+                // 점수 서버 저장 (group 포함)
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        playerName: pName, totalAsset: finalAsset,
+                        stage: selectedStage, group: selectedGroup,
+                        isMidRanking: !isFinal
+                    })
+                });
+                _loadRankingData('group');
+            } catch(e) {
+                document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
+            }
+        }
+
+        async function _loadRankingData(tab) {
+            document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
+            try {
+                let url;
+                if (tab === 'group') {
+                    url = API_URL + "?action=ranking&stage=" + encodeURIComponent(selectedStage) + "&group=" + encodeURIComponent(selectedGroup);
+                } else {
+                    url = API_URL + "?action=allRanking";
+                }
+                const rankingRes = await fetch(url);
+                let rankingData  = await rankingRes.json();
+
+                // 내 기록이 없으면 임시 추가 (그룹 탭에서만)
+                if (tab === 'group') {
+                    const myExists = rankingData.some(r => r.name === _rankingPName);
+                    if (!myExists) {
+                        rankingData.push({ name: _rankingPName, asset: _rankingFinalAsset, stage: selectedStage, group: selectedGroup, isMe: true });
+                    }
+                }
+                rankingData.sort((a,b) => b.asset - a.asset);
+
+                let tbody = document.getElementById('rankingBody'); tbody.innerHTML = '';
+                rankingData.forEach((r, i) => {
+                    const tr = document.createElement('tr');
+                    const isMyRecord = r.isMe || (r.name === _rankingPName && tab === 'group');
+                    if (isMyRecord) tr.classList.add('my-record');
+                    const tierHtml  = getTierHtml(parseInt(r.asset) || 0);
+                    const rankEmoji = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1)+'위';
+                    const lastCol   = tab === 'group' ? (r.group || selectedGroup) : (r.stage || '-');
+                    tr.innerHTML = `<td>${rankEmoji}</td><td>${r.name}${isMyRecord?' 👈':''}</td><td><strong>${(parseInt(r.asset)||0).toLocaleString()} 만 원</strong></td><td>${tierHtml}</td><td>${lastCol}</td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
+            }
+        }
+    </script>
+</body>
+</html>
