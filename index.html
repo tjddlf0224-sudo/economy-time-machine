@@ -1113,12 +1113,10 @@
         //    대신 프론트에서 "이미 처리한 신호" 타임스탬프를 기억해 중복 실행 방지
         let _pollUnlockHandled = false;
         let _pollNextTurnHandled = false;
-        
-        async function startUnlockPoll() {
-            // 시작 시점의 turnIndex를 기록 — 이미 이 턴에 nextTurn 신호가 있으면 무시
-            const startTurnIndex = currentTurnIndex;
-            _pollNextTurnHandledIndex = -1;
+        let _lastNextTurnAt = '';   // ★ 마지막으로 처리한 nextTurn 신호의 updatedAt
+        let _lastForceTurnAt = '';  // ★ 강제 턴넘김 중복 처리 방지용
 
+        async function startUnlockPoll() {
             setInterval(async () => {
                 try {
                     const res  = await fetch(API_URL + '?action=checkUnlock&stage=' + selectedStage);
@@ -1138,10 +1136,12 @@
                         _pollUnlockHandled = false;
                     }
 
-                    // nextTurn 신호 — 한 번만 실행 후 GAS 신호 초기화
+                    // ★ nextTurn 신호 — updatedAt 기반으로 "새 신호"인지 판별
+                    // 값이 1이더라도 이미 처리한 updatedAt 이면 무시 → 교사가 여러 번 눌러도 OK
                     if (data && data.nextTurn) {
-                        if (!_pollNextTurnHandled) {
-                            _pollNextTurnHandled = true;
+                        const signalAt = data.updatedAt || '';
+                        if (signalAt !== _lastNextTurnAt) {
+                            _lastNextTurnAt = signalAt;
                             setReady(false);
                             if (data.isFinal) {
                                 processEndTurnLogicSilent();
@@ -1150,11 +1150,88 @@
                                 processEndTurnLogic();
                             }
                         }
-                    } else {
-                        _pollNextTurnHandled = false;  // ← 교사가 다음 신호 보내면 자동 리셋
                     }
                 } catch(e) {}
             }, 6000);
+
+            // ══════════════════════════════════════════
+            // 🛠️ 강제 턴넘김 폴링 (교사가 스프레드시트에서 직접 설정)
+            // ══════════════════════════════════════════
+            setInterval(async () => {
+                try {
+                    const pName = document.getElementById('playerName')?.value.trim();
+                    if (!pName) return;
+
+                    const res  = await fetch(
+                        API_URL + '?action=checkForceTurn'
+                        + '&playerName=' + encodeURIComponent(pName)
+                        + '&stage=' + encodeURIComponent(selectedStage)
+                    );
+                    const data = await res.json();
+
+                    if (!data || !data.found) return;
+
+                    // updatedAt 기반 중복 처리 방지
+                    const signalAt = data.updatedAt || '';
+                    if (signalAt === _lastForceTurnAt) return;
+                    _lastForceTurnAt = signalAt;
+
+                    const target = parseInt(data.targetTurnIndex);
+                    if (isNaN(target) || target <= currentTurnIndex) return;
+
+                    // 처리 완료 → GAS 강제턴 레코드 삭제
+                    fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'clearForceTurn', playerName: pName, stage: selectedStage })
+                    });
+
+                    // 목표 턴까지 조용히 진행 후 마지막 한 턴만 화면에 표시
+                    const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+                    while (currentTurnIndex < target - 1) {
+                        // 도중 턴들은 자산 계산만 (이자·환차익 등) 조용히 반영
+                        _applyTurnSilent();
+                    }
+                    // 마지막 턴은 정상 로직으로 (턴 리포트 표시)
+                    const isFinalTurn = !allData[target] || parseInt(allData[target]['턴']) > totalTurns;
+                    const targetTurnNum = allData[target] ? parseInt(allData[target]['턴']) : target;
+                    showEggToast('🛠️ 선생님이 ' + targetTurnNum + '분기로 강제 이동했습니다.');
+                    if (isFinalTurn) {
+                        processEndTurnLogicSilent();
+                        showRanking(true);
+                    } else {
+                        processEndTurnLogic();
+                    }
+                } catch(e) {}
+            }, 7000);  // 6000ms 폴링과 엇갈리도록 7초
+        }
+
+        // 강제 턴넘김 시 도중 턴 조용히 계산 (이자·환차익·대출이자 반영, UI 미갱신)
+        function _applyTurnSilent() {
+            const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
+            if (currentTurnIndex >= allData.length - 1) return;
+            const prevBankRate   = currentRates.Bank;
+            const prevDollarRate = currentRates.Dollar;
+            const prevGoldRate   = currentRates.Gold;
+            currentTurnIndex++;
+            const nextData = allData[currentTurnIndex];
+            if (!nextData || parseInt(nextData['턴']) > totalTurns) return;
+            // 예금 이자
+            if (assets.Bank > 0) assets.Bank += Math.floor(assets.Bank * (prevBankRate / 100));
+            // 달러 환차익
+            const newDollarRate = parseNum(nextData['💵 달러(환율)']);
+            if (assets.Dollar > 0 && prevDollarRate > 0) assets.Dollar = Math.floor(assets.Dollar * (newDollarRate / prevDollarRate));
+            // 금 가치변동
+            const newGoldRate = parseNum(nextData['🪙 금괴(1g)']);
+            if (assets.Gold > 0 && prevGoldRate > 0) assets.Gold = Math.floor(assets.Gold * (newGoldRate / prevGoldRate));
+            // 대출 이자
+            if (loanAmount > 0) playerCash -= Math.floor(loanAmount * getLoanRate());
+            // currentRates 업데이트 (다음 반복에서 prevRate로 사용)
+            let newBankRate = parseNum(nextData['🏦 예금금리']); if (newBankRate > 0 && newBankRate <= 1) newBankRate *= 100;
+            currentRates.Bank   = newBankRate || prevBankRate;
+            currentRates.Dollar = newDollarRate || prevDollarRate;
+            currentRates.Gold   = newGoldRate   || prevGoldRate;
+            isCardDrawnThisTurn = false;
+            tradeThisTurn = false;
         }
 
         // ══════════════════════════════════════════
