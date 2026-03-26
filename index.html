@@ -2406,7 +2406,7 @@
                 btnAction.onclick   = () => location.reload();
             } else {
                 let yearCount = Math.floor(currentTurnIndex / 4) + 1;
-                document.getElementById('rankingTitle').innerText    = `📊 ${yearCount}년차 중간 랭킹`;
+                document.getElementById('rankingTitle').innerText    = `📊 중간 랭킹`;
                 document.getElementById('rankingSubtitle').innerText = `[${selectedGroup}] ${pName}님의 임시 순위`;
                 btnAction.innerText = "➡️ 다음 분기로 타임워프";
                 btnAction.onclick   = () => { showScreen('game-screen'); applyTurnData(); };
