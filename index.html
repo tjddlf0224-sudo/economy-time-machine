@@ -1370,7 +1370,7 @@
             // 대출 이자
             if (loanAmount > 0) playerCash -= Math.floor(loanAmount * getLoanRate());
             // currentRates 업데이트 (다음 반복에서 prevRate로 사용)
-            let newBankRate = parseNum(nextData['🏦 예금금리']); if (newBankRate > 0 && newBankRate <= 1) newBankRate *= 100;
+            let newBankRate = parseNum(nextData['🏦 예금금리']);
             currentRates.Bank   = newBankRate || prevBankRate;
             currentRates.Dollar = newDollarRate || prevDollarRate;
             currentRates.Gold   = newGoldRate   || prevGoldRate;
@@ -1752,7 +1752,7 @@
             for (let i=1; i<=totalTurns; i++) { progressHtml += `<div class="progress-box${i<=turnNum?' active':''}"></div>`; }
             document.getElementById('progressContainer').innerHTML = progressHtml;
             document.getElementById('newsText').innerText = data['📰 시대 상황 (뉴스 헤드라인)'];
-            let bankRate = parseNum(data['🏦 예금금리']); if (bankRate>0 && bankRate<=1) bankRate*=100; bankRate=parseFloat(bankRate.toFixed(2));
+            let bankRate = parseFloat(parseNum(data['🏦 예금금리']).toFixed(2));
             document.getElementById('rateBank').innerText   = bankRate + '%';
             document.getElementById('rateDollar').innerText = parseNum(data['💵 달러(환율)']).toLocaleString() + ' 원';
             document.getElementById('rateGold').innerText   = parseNum(data['🪙 금괴(1g)']).toLocaleString() + ' 원';
