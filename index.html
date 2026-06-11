@@ -906,6 +906,7 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbxF4vXeCFDkD8VAA2TA3mGXjH_V19hpTnjL4E9eU6JGABp_FJmqTlfeWVPSIxm70RpN/exec";
         function parseNum(str) { if(!str) return 0; return parseFloat(str.toString().replace(/[^0-9.-]/g, '')) || 0; }
+        function escHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         
         let allData = []; let currentTurnIndex = 0; const TOTAL_TURNS = 12;
         let playerCash = 1000; let assets = { Bank: 0, Dollar: 0, Gold: 0 }; let currentRates = { Bank: 0, Dollar: 0, Gold: 0 };
@@ -2025,7 +2026,7 @@
                 const rateColor = e.netWorth >= 1000 ? '#ff4b4b' : '#4b8bff';
                 const rateSign  = e.netWorth >= 1000 ? '+' : '';
                 const rate = (((e.netWorth - 1000) / 1000) * 100).toFixed(1);
-                return `<div class="journal-entry"><div class="je-turn">${e.turn}턴 · ${e.period}</div><div class="je-note">${e.note.replace(/\n/g,'<br>')}</div><div class="je-profit" style="color:${rateColor}">총자산 ${e.netWorth}만 원 (${rateSign}${rate}%)</div></div>`;
+                return `<div class="journal-entry"><div class="je-turn">${e.turn}턴 · ${e.period}</div><div class="je-note">${escHtml(e.note).replace(/\n/g,'<br>')}</div><div class="je-profit" style="color:${rateColor}">총자산 ${e.netWorth}만 원 (${rateSign}${rate}%)</div></div>`;
             }).join('');
             list.scrollTop = list.scrollHeight;
         }
@@ -2234,14 +2235,18 @@
         function buyStock() { SFX.buy();
             if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
             if(!currentSelectedStock){alert("종목 선택!");return;}
-            let qty=parseInt(document.getElementById('tradeQuantity').value);let cost=qty*currentPrices[currentSelectedStock];let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
+            let qty=parseInt(document.getElementById('tradeQuantity').value);
+            if(!qty||qty<1){SFX.error();alert("1 이상의 수량을 입력해주세요!");return;}
+            let cost=qty*currentPrices[currentSelectedStock];let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
             if(playerCash>=cost){playerCash-=cost;ownedStocks[currentSelectedStock]+=qty;totalInvested[currentSelectedStock]+=cost;avgPrices[currentSelectedStock]=totalInvested[currentSelectedStock]/ownedStocks[currentSelectedStock];tradeHistory[currentSelectedStock].push({x:dateLabel,type:'B',price:currentPrices[currentSelectedStock]});statsStocksBought[currentSelectedStock]=(statsStocksBought[currentSelectedStock]||0)+1;lastBuyPrice[currentSelectedStock]=currentPrices[currentSelectedStock];tradeThisTurn=true;alert(`${qty}주 매수 완료!`);selectStock(currentSelectedStock,document.getElementById('selectedStockName').innerText);updateUI();}
             else{alert("현금 부족!");}
         }
         function sellStock() { SFX.sell();
             if(_isReady){alert('준비완료 상태에서는 투자할 수 없습니다!');return;}
             if(!currentSelectedStock){alert("종목 선택!");return;}
-            let qty=parseInt(document.getElementById('tradeQuantity').value);let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
+            let qty=parseInt(document.getElementById('tradeQuantity').value);
+            if(!qty||qty<1){SFX.error();alert("1 이상의 수량을 입력해주세요!");return;}
+            let dateLabel=String(allData[currentTurnIndex]['연도/분기']);
             if(ownedStocks[currentSelectedStock]>=qty){let revenue=qty*currentPrices[currentSelectedStock];playerCash+=revenue;let costBasis=avgPrices[currentSelectedStock]*qty;totalInvested[currentSelectedStock]-=costBasis;ownedStocks[currentSelectedStock]-=qty;if(ownedStocks[currentSelectedStock]===0){avgPrices[currentSelectedStock]=0;totalInvested[currentSelectedStock]=0;}tradeHistory[currentSelectedStock].push({x:dateLabel,type:'S',price:currentPrices[currentSelectedStock]});statsStocksSold[currentSelectedStock]=(statsStocksSold[currentSelectedStock]||0)+1;if(lastBuyPrice[currentSelectedStock]&&currentPrices[currentSelectedStock]<lastBuyPrice[currentSelectedStock])statsHighBuyLowSell=true;tradeThisTurn=true;alert(`${qty}주 매도 완료!`);selectStock(currentSelectedStock,document.getElementById('selectedStockName').innerText);updateUI();}
             else{alert("보유 주식이 부족합니다!");}
         }
@@ -2251,10 +2256,10 @@
         // ══════════════════════════════════════════
         const ACHIEVEMENTS = [
             { id:'diamond_hand', icon:'💎', name:'다이아몬드 손', desc:'한 종목만 매수하고 단 한 번도 팔지 않고 끝까지 버텼습니다!', check: () => { const bk=Object.keys(statsStocksBought); const sk=Object.keys(statsStocksSold); return bk.length===1&&sk.length===0&&ownedStocks[bk[0]]>0; } },
-            { id:'human_indicator', icon:'📉', name:'인간 지표', desc:'고점에서 사고 저점에서 팔았습니다. 반대로만 했어도 부자가 됐을 텐데...', check: () => statsHighBuyLowSell&&((playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue())<900) },
+            { id:'human_indicator', icon:'📉', name:'인간 지표', desc:'고점에서 사고 저점에서 팔았습니다. 반대로만 했어도 부자가 됐을 텐데...', check: () => statsHighBuyLowSell&&((playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue()-loanAmount)<900) },
             { id:'bank_villain', icon:'🏦', name:'예금 빌런', desc:'오직 은행 예금만 믿은 겁쟁이 요원. 안정적이지만 아쉽네요.', check: () => { const st=Object.values(statsStocksBought).reduce((a,b)=>a+b,0); return st===0&&assets.Bank>0&&statsBankOnlyTurns>=8; } },
             { id:'scalping_god', icon:'⚡', name:'단타의 신', desc:'매 분기마다 주식을 사고팔며 시장을 휘저었습니다!', check: () => totalTradeTurns>=9 },
-            { id:'lucky_star', icon:'🌟', name:'행운의 별', desc:'별다른 전략 없이도 자산이 2배 이상! 타고난 운의 요원!', check: () => { const net=playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue(); return net>=2000&&Object.values(statsStocksBought).reduce((a,b)=>a+b,0)<=3; } },
+            { id:'lucky_star', icon:'🌟', name:'행운의 별', desc:'별다른 전략 없이도 자산이 2배 이상! 타고난 운의 요원!', check: () => { const net=playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue()-loanAmount; return net>=2000&&Object.values(statsStocksBought).reduce((a,b)=>a+b,0)<=3; } },
             { id:'gold_hoarder', icon:'🪙', name:'금괴 수집가', desc:'금 본위제를 신봉하는 요원! 금괴 200만 원 이상 보유!', check: () => assets.Gold>=200 },
             { id:'dollar_diplomat', icon:'💵', name:'달러 외교관', desc:'달러 보유액 300만 원 이상으로 마감!', check: () => assets.Dollar>=300 },
         ];
@@ -2267,7 +2272,7 @@
             }
             // ★ check() 실행 중 오류가 나도 튕기지 않도록 try-catch
             const earned = ACHIEVEMENTS.find(a => { try { return a.check(); } catch(e) { return false; } });
-            const net = playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue();
+            const net = playerCash+assets.Bank+assets.Dollar+assets.Gold+getTotalStockValue()-loanAmount;
             const tier = getTier(net);
             document.getElementById('achIcon').innerText  = earned ? earned.icon : tier.icon;
             document.getElementById('achName').innerText  = earned ? earned.name : tier.label+' 요원';
@@ -2346,7 +2351,7 @@
             let stockVal=getTotalStockValue(); document.getElementById('stockTotalValue').innerText=Math.floor(stockVal);
             const holdingsEl=document.getElementById('stockHoldingsList');
             if(holdingsEl){ const held=availableStocks.filter(st=>ownedStocks[st]>0); if(held.length===0){holdingsEl.style.display='none';}else{holdingsEl.style.display='flex';holdingsEl.innerHTML=held.map(st=>{const val=Math.floor(ownedStocks[st]*currentPrices[st]);const avg=avgPrices[st]||0;const gain=avg>0?((currentPrices[st]-avg)/avg*100):0;const color=gain>=0?'#ff4b4b':'#4b8bff';const sign=gain>=0?'+':'';return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88em;padding:3px 2px;"><span style="color:#c5c6c7;">ㄴ ${st} <span style="color:#a4b0be;">${ownedStocks[st]}주</span></span><span><strong style="color:#4b8bff;">${val}만</strong> <span style="color:${color};font-size:0.9em;">(${sign}${gain.toFixed(1)}%)</span></span></div>`;}).join('');} }
-            let netWorth=playerCash+assets.Bank+assets.Dollar+assets.Gold+stockVal; document.getElementById('totalNetWorth').innerText=Math.floor(netWorth);
+            let netWorth=playerCash+assets.Bank+assets.Dollar+assets.Gold+stockVal-loanAmount; document.getElementById('totalNetWorth').innerText=Math.floor(netWorth);
             let returnRate=((netWorth-1000)/1000)*100; let rateElem=document.getElementById('totalReturnRate');
             if(returnRate>0){rateElem.innerText='(+'+returnRate.toFixed(1)+'%)';rateElem.style.color='#ff4b4b';}
             else if(returnRate<0){rateElem.innerText='('+returnRate.toFixed(1)+'%)';rateElem.style.color='#4b8bff';}
@@ -2364,7 +2369,7 @@
         let _currentRankingTab = 'group';
 
         async function showRanking(isFinal) {
-            let finalAsset = Math.floor(playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue());
+            let finalAsset = Math.floor(playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue() - loanAmount);
             let pName = document.getElementById('playerName').value.trim();
             _rankingIsFinal   = isFinal;
             _rankingFinalAsset = finalAsset;
@@ -2464,7 +2469,7 @@
                     const tierHtml  = getTierHtml(parseInt(r.asset) || 0);
                     const rankEmoji = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1)+'위';
                     const lastCol   = tab === 'group' ? (r.group || selectedGroup) : (r.stage || '-');
-                    tr.innerHTML = `<td>${rankEmoji}</td><td>${r.name}${isMyRecord?' 👈':''}</td><td><strong>${(parseInt(r.asset)||0).toLocaleString()} 만 원</strong></td><td>${tierHtml}</td><td>${lastCol}</td>`;
+                    tr.innerHTML = `<td>${rankEmoji}</td><td>${escHtml(r.name)}${isMyRecord?' 👈':''}</td><td><strong>${(parseInt(r.asset)||0).toLocaleString()} 만 원</strong></td><td>${tierHtml}</td><td>${escHtml(lastCol)}</td>`;
                     tbody.appendChild(tr);
                 });
             } catch(e) {
