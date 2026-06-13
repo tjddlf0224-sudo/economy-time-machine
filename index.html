@@ -1217,7 +1217,78 @@
         let _lastNextTurnAt = '';   // ★ 마지막으로 처리한 nextTurn 신호의 updatedAt
         let _lastForceTurnAt = '';  // ★ 강제 턴넘김 중복 처리 방지용
 
+        // ══════════════════════════════════════════
+        // 🏁 라이브 랭킹 — 실시간 순위 변동 알림 (도파민 유발 경쟁 요소)
+        // ══════════════════════════════════════════
+        let _liveStandings = [];   // 직전 순위 [{name,net}]
+        let _rankToastTimer = null;
+
+        function showRankToast(title, sub) {
+            let el = document.getElementById('rankToast');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'rankToast';
+                el.style.cssText = 'position:fixed;top:130px;left:50%;transform:translateX(-50%);z-index:8200;background:linear-gradient(135deg,#1a0a2a,#2d0a4a);border:2px solid #bc13fe;border-radius:12px;padding:14px 32px;text-align:center;box-shadow:0 0 30px rgba(188,19,254,0.6);pointer-events:none;opacity:0;transition:opacity 0.3s, transform 0.3s;';
+                el.innerHTML = '<div id="rankToastTitle" style="font-size:1.35em;font-weight:900;color:#e0a3ff;"></div><div id="rankToastSub" style="font-size:0.95em;color:#fff;margin-top:3px;"></div>';
+                document.body.appendChild(el);
+            }
+            document.getElementById('rankToastTitle').innerText = title;
+            document.getElementById('rankToastSub').innerText = sub;
+            el.style.display = 'block';
+            requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)'; });
+            if (_rankToastTimer) clearTimeout(_rankToastTimer);
+            _rankToastTimer = setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(-10px)'; }, 3500);
+        }
+
+        async function pollLiveRanking() {
+            const pName = document.getElementById('playerName')?.value.trim();
+            if (!pName) return;
+            // 게임 화면일 때만 (랭킹/로그인 화면에서는 스킵)
+            if (!document.getElementById('game-screen').classList.contains('active')) return;
+            try {
+                const res  = await fetch(API_URL + '?action=liveRanking&stage=' + encodeURIComponent(selectedStage) + '&group=' + encodeURIComponent(selectedGroup));
+                const data = await res.json();
+                if (!Array.isArray(data) || data.length < 2) { _liveStandings = Array.isArray(data) ? data : []; return; }
+
+                const prevOrder = _liveStandings.map(r => r.name);
+                const newOrder  = data.map(r => r.name);
+                const myRank    = newOrder.indexOf(pName) + 1;     // 1-based, 0이면 미발견
+
+                // 첫 수신이면 기준만 저장하고 종료 (게임 시작 시 토스트 폭발 방지)
+                if (prevOrder.length === 0) { _liveStandings = data; return; }
+
+                const prevMyRank = prevOrder.indexOf(pName) + 1;
+                let toastFired = false;
+
+                // 1) 내가 1위 새로 등극 — 최고 도파민
+                if (myRank === 1 && prevMyRank !== 1) {
+                    showRankToast('👑 1위 등극!', pName + '님이 선두로 나섰습니다!');
+                    SFX.tier_up(); launchConfetti(); setTimeout(stopConfetti, 2500);
+                    toastFired = true;
+                }
+                // 2) 다른 사람이 새로 1위
+                else if (newOrder[0] !== prevOrder[0] && newOrder[0] !== pName) {
+                    showRankToast('🔥 1위 교체!', newOrder[0] + '님이 1위를 차지했습니다!');
+                    toastFired = true;
+                }
+                // 3) 내가 추월당함 (순위 하락)
+                if (!toastFired && myRank > 0 && prevMyRank > 0 && myRank > prevMyRank) {
+                    const aboveMe   = newOrder.slice(0, myRank - 1).reverse();
+                    const overtaker = aboveMe.find(n => prevOrder.indexOf(n) >= prevMyRank - 1 && n !== pName);
+                    if (overtaker) { showRankToast('😱 추월당했습니다!', overtaker + '님에게 따라잡혔어요. 분발하세요!'); SFX.error(); toastFired = true; }
+                }
+                // 4) 내가 순위 상승 (추월 성공)
+                if (!toastFired && myRank > 0 && prevMyRank > 0 && myRank < prevMyRank) {
+                    showRankToast('📈 순위 상승!', prevMyRank + '위 → ' + myRank + '위로 올랐어요!');
+                    SFX.ready();
+                }
+
+                _liveStandings = data;
+            } catch(e) {}
+        }
+
         async function startUnlockPoll() {
+            setInterval(pollLiveRanking, 6000);  // 🏁 실시간 순위 변동 알림
             setInterval(async () => {
                 try {
                     const res  = await fetch(API_URL + '?action=checkUnlock&stage=' + selectedStage);
@@ -2102,7 +2173,8 @@
         async function saveGameState() {
             const pName = document.getElementById('playerName').value.trim();
             if (!pName) return;
-            const state = { action:'saveState', playerName:pName, stage:selectedStage, group:selectedGroup, turnIndex:currentTurnIndex, playerCash, assets, ownedStocks, avgPrices, totalInvested, loanAmount, journalEntries, profitStreak, prevNetWorth, totalTradeTurns, statsBankOnlyTurns, statsHighBuyLowSell, _darkBrokerUsed, _glitchUsed, _bgShown };
+            const netWorth = Math.floor(playerCash + assets.Bank + assets.Dollar + assets.Gold + getTotalStockValue() - loanAmount);
+            const state = { action:'saveState', playerName:pName, stage:selectedStage, group:selectedGroup, turnIndex:currentTurnIndex, playerCash, assets, ownedStocks, avgPrices, totalInvested, loanAmount, journalEntries, profitStreak, prevNetWorth, totalTradeTurns, statsBankOnlyTurns, statsHighBuyLowSell, _darkBrokerUsed, _glitchUsed, _bgShown, netWorth };
             try { await fetch(API_URL, { method:'POST', body:JSON.stringify(state) }); } catch(e) { console.warn('저장 실패:', e); }
         }
         async function loadGameState(playerName, stage) {
