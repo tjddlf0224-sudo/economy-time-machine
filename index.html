@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>경제 타임머신 V5.3</title>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -905,8 +906,10 @@
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbxF4vXeCFDkD8VAA2TA3mGXjH_V19hpTnjL4E9eU6JGABp_FJmqTlfeWVPSIxm70RpN/exec";
+        const TEACHER_PIN = "0224";  // ← 교사 패널 보호: 값을 정하면(예: "48591") 교사 로그인 시 PIN 인증을 요구. 빈 값이면 기존처럼 인증 없음.
         function parseNum(str) { if(!str) return 0; return parseFloat(str.toString().replace(/[^0-9.-]/g, '')) || 0; }
         function escHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function _numOr(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
         
         let allData = []; let currentTurnIndex = 0; const TOTAL_TURNS = 12;
         let playerCash = 1000; let assets = { Bank: 0, Dollar: 0, Gold: 0 }; let currentRates = { Bank: 0, Dollar: 0, Gold: 0 };
@@ -1287,6 +1290,28 @@
             } catch(e) {}
         }
 
+        // ★ 로그인 직후 1회 실행: 서버에 이미 존재하는 신호(이전 세션 잔여 포함)의 타임스탬프를 미리 기록해
+        //    첫 폴링이 '오래된 신호'를 새 신호로 오인해 학생을 최종 랭킹 등으로 튕기는 것을 방지한다.
+        async function primeSignalTimestamps() {
+            try {
+                const res  = await fetch(API_URL + '?action=checkUnlock&stage=' + selectedStage);
+                const data = await res.json();
+                if (data) {
+                    if (data.group)    selectedGroup      = data.group;
+                    if (data.nextTurn) _lastNextTurnAt    = data.updatedAt || '';
+                    if (data.unlock)   _pollUnlockHandled = true;
+                }
+            } catch(e) {}
+            try {
+                const pName = document.getElementById('playerName')?.value.trim();
+                if (pName) {
+                    const res2 = await fetch(API_URL + '?action=checkForceTurn&playerName=' + encodeURIComponent(pName) + '&stage=' + encodeURIComponent(selectedStage));
+                    const d2   = await res2.json();
+                    if (d2 && d2.found) _lastForceTurnAt = d2.updatedAt || '';
+                }
+            } catch(e) {}
+        }
+
         async function startUnlockPoll() {
             setInterval(pollLiveRanking, 6000);  // 🏁 실시간 순위 변동 알림
             setInterval(async () => {
@@ -1313,7 +1338,9 @@
                     // ★ targetTurnIndex: 교사가 입력한 암호에 연동된 목표 턴 번호 → 정확히 그 턴으로 이동
                     if (data && data.nextTurn) {
                         const signalAt = data.updatedAt || '';
-                        if (signalAt !== _lastNextTurnAt) {
+                        // ★ 게임화면일 때만 처리 — 랭킹/모달 화면 위로 결산이 겹치지 않도록 (복귀 후 다음 폴링에서 처리)
+                        const onGameScreen = document.getElementById('game-screen').classList.contains('active');
+                        if (signalAt !== _lastNextTurnAt && onGameScreen) {
                             _lastNextTurnAt = signalAt;
                             setReady(false);
                             if (data.isFinal) {
@@ -1349,6 +1376,9 @@
                     const data = await res.json();
 
                     if (!data || !data.found) return;
+
+                    // ★ 랭킹/모달 화면일 때는 처리를 미룸 (게임화면 복귀 후 다음 폴링에서 처리)
+                    if (!document.getElementById('game-screen').classList.contains('active')) return;
 
                     // updatedAt 기반 중복 처리 방지
                     const signalAt = data.updatedAt || '';
@@ -1443,7 +1473,7 @@
             if (loanAmount > 0) playerCash -= Math.floor(loanAmount * getLoanRate());
             // currentRates 업데이트 (다음 반복에서 prevRate로 사용)
             let newBankRate = parseNum(nextData['🏦 예금금리']);
-            currentRates.Bank   = newBankRate || prevBankRate;
+            currentRates.Bank   = newBankRate;  // ★ 정상 턴과 동일하게 반영 (강제턴 시 옛 금리로 이자 과다지급 방지)
             currentRates.Dollar = newDollarRate || prevDollarRate;
             currentRates.Gold   = newGoldRate   || prevGoldRate;
             isCardDrawnThisTurn = false;
@@ -1691,6 +1721,11 @@
                 if (allData.error) { alert(allData.error); btn.innerText = "타임머신 탑승 🚀"; btn.disabled = false; return; }
 
                 if (name === "교사" || name === "선생님") {
+                    // ★ TEACHER_PIN이 설정돼 있으면 교사 패널 진입 시 PIN 인증 요구 (학생의 교사 사칭 방지)
+                    if (TEACHER_PIN && prompt('교사 인증 PIN을 입력하세요:') !== TEACHER_PIN) {
+                        alert('PIN이 올바르지 않습니다. 학생으로 참여하려면 다른 닉네임을 사용하세요.');
+                        btn.innerText = "타임머신 탑승 🚀"; btn.disabled = false; return;
+                    }
                     document.getElementById('btnTeacherOpen').style.display = "inline-block";
                     buildTeacherPasswordTable();
                     startReadyPoll();
@@ -1714,8 +1749,15 @@
                     if (type === 'penalty') return () => { playerCash = playerCash - amount; };
                     return () => {};
                 };
+                const _VALID_ACT = ['cash','gold','dollar','penalty','none'];
                 let rewardCards = window._REWARD_CARDS
-                    ? window._REWARD_CARDS.map(r => ({ ...r, action: _buildAction(r.actionType, r.amount) }))
+                    ? window._REWARD_CARDS.map(r => {
+                        // ★ 시트 REWARD_CARDS 헤더가 한 칸 밀린 경우 방어: actionType 칸에 타입 문자열이 아니라
+                        //    금액(숫자)이 들어오고, 실제 타입은 빈 헤더('') 칸에 밀려 있음 → 원위치 복구
+                        let atype = r.actionType, amt = r.amount;
+                        if (!_VALID_ACT.includes(atype) && _VALID_ACT.includes(r[''])) { atype = r['']; amt = r.actionType; }
+                        return { ...r, action: _buildAction(atype, Number(amt) || 0) };
+                      })
                     : [
                         { type:'reward', icon:'💰', title:'정부 지원금 수령!', desc:'현금 +300만 원이 입금되었습니다.', action: () => { playerCash += 300; } },
                         { type:'reward', icon:'🪙', title:'금괴 발견!', desc:'금괴 자산 +100만 원 추가.', action: () => { assets.Gold += 100; } },
@@ -1736,6 +1778,11 @@
                 if (window._pendingEgg) { window._pendingEgg.action(); showEggToast(window._pendingEgg.msg); window._pendingEgg=null; }
                 initDarkBrokerTurn();
                 initGlitchTurn();
+                // ★ 차트 라이브러리(CDN) 로딩 실패 시 게임화면에 진입하지 않고 안내 (깨진 화면 방지)
+                if (typeof ApexCharts === 'undefined' || typeof Chart === 'undefined') {
+                    alert('차트 라이브러리 로딩에 실패했습니다. 인터넷 연결을 확인하고 새로고침(F5) 후 다시 시도해주세요.');
+                    btn.innerText = "타임머신 탑승 🚀"; btn.disabled = false; return;
+                }
                 SFX.launch();
                 showScreen('game-screen');
                 startBgm();  // 🎵 타임머신 탑승 후 BGM 시작
@@ -1744,6 +1791,7 @@
                 // 교사는 직접 턴을 진행하므로 poll 불필요 — 학생만 실행
                 // ★ loadGameState 완료 후 시작 — 재로그인 시 오래된 신호 오작동 방지
                 if (name !== "교사" && name !== "선생님") {
+                    await primeSignalTimestamps();  // ★ 로그인 시점에 이미 존재하는(오래된) 신호를 '처리됨'으로 기록 → 옛 신호로 튕김 방지
                     startUnlockPoll();
                 }
             } catch(error) {
@@ -1817,7 +1865,9 @@
         function closeTeacherModal() { document.getElementById('teacherModal').style.display = 'none'; }
 
         function applyTurnData() {
-            const data = allData[currentTurnIndex]; let turnNum = parseInt(data['턴']);
+            const data = allData[currentTurnIndex];
+            if (!data) return;  // ★ 인덱스 범위 밖이면 안전하게 무시 (재접속 시 crash 방지)
+            let turnNum = parseInt(data['턴']);
             const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
             document.getElementById('currentTime').innerText = `🕒 ${data['연도/분기']} (${turnNum}/${totalTurns})`;
             let progressHtml = '';
@@ -1886,11 +1936,15 @@
             SFX.turn_end();
             closeTeacherModal();  // 턴 이동 시 교사 패널 자동 닫기
             setReady(false);  // 턴 이동 시 준비완료 자동 해제
+            document.getElementById('gachaOverlay').classList.remove('active'); stopConfetti();  // ★ 카드 뽑기 도중 턴 이동 시 오버레이가 결산 위에 남지 않도록 정리
             let prevBankRate = currentRates.Bank; let prevDollarRate = currentRates.Dollar; let prevGoldRate = currentRates.Gold;
             currentTurnIndex++;
             const totalTurns = window._TOTAL_TURNS || TOTAL_TURNS;
             const nextData = allData[currentTurnIndex];
             if (!nextData || parseInt(nextData['턴']) > totalTurns) { return showRanking(true); }
+
+            // ★ 새 턴의 종가로 currentPrices 갱신 후 순자산 계산 → 저장 순자산·스트릭이 새 턴 기준과 일치
+            availableStocks.forEach(st => { currentPrices[st] = parseNum(nextData[st + '_종가']) / 10000; });
 
             let newDollarRate = parseNum(nextData['💵 달러(환율)']); let newGoldRate = parseNum(nextData['🪙 금괴(1g)']);
             let loanInterest = 0;
@@ -2134,7 +2188,7 @@
             document.getElementById('bankruptcyGame').classList.add('active');
             _bgTimerHandle = setInterval(() => { _bgTimeLeft--; document.getElementById('bgTimer').innerText=_bgTimeLeft; if(_bgTimeLeft<=3) document.getElementById('bgTimer').style.color='#ff0000'; if(_bgTimeLeft<=0) bgFinish(); }, 1000);
         }
-        function bgClick() { if(!_bgActive) return; _bgClicks++; document.getElementById('bgCount').innerText=`클릭 횟수: ${_bgClicks}회 (+${_bgClicks*10}만 원)`; document.getElementById('bgClickIcon').innerText=['💥','👊','🤜','💢'][_bgClicks%4]; }
+        function bgClick() { if(!_bgActive) return; if(_bgClicks>=60) return; _bgClicks++; document.getElementById('bgCount').innerText=`클릭 횟수: ${_bgClicks}회 (+${_bgClicks*10}만 원)`; document.getElementById('bgClickIcon').innerText=['💥','👊','🤜','💢'][_bgClicks%4]; }
         function bgFinish() { clearInterval(_bgTimerHandle); _bgActive=false; document.getElementById('bgClickZone').style.pointerEvents='none'; document.getElementById('bgClickZone').style.opacity='0.5'; const earned=_bgClicks*10; playerCash+=earned; updateUI(); document.getElementById('bgResult').style.display='block'; document.getElementById('bgResult').innerText=`🎉 구호금 +${earned}만 원 지급!`; document.getElementById('bgCloseBtn').style.display='inline-block'; document.getElementById('bgTimer').innerText='종료'; }
         function closeBankruptcyGame() { document.getElementById('bankruptcyGame').classList.remove('active'); }
 
@@ -2150,13 +2204,14 @@
         }
         function openDarkBroker() {
             const stake = Math.floor(playerCash/2);
+            window._dbStake = stake;  // ★ 표시된 베팅액 고정 (수락 시점에 현금이 변해도 표시값대로 정산)
             document.getElementById('dbStakeText').innerText = `베팅: 현금 ${stake}만 원 → 성공 시 +${stake*3}만 원`;
             document.querySelector('.db-buttons').style.display='flex';
             document.getElementById('darkBrokerResult').style.display='none';
             document.getElementById('darkBrokerOverlay').classList.add('active');
         }
         function darkBrokerAccept() {
-            const stake=Math.floor(playerCash/2); const win=Math.random()<0.5;
+            const stake=(window._dbStake!=null?window._dbStake:Math.floor(playerCash/2)); const win=Math.random()<0.5;
             document.querySelector('.db-buttons').style.display='none';
             const rb=document.getElementById('darkBrokerResult'); rb.style.display='flex';
             const ri=document.getElementById('dbResultIcon'); const rt=document.getElementById('dbResultText'); const rs=document.getElementById('dbResultSub');
@@ -2181,17 +2236,23 @@
             try {
                 const res  = await fetch(API_URL + '?action=loadState&playerName=' + encodeURIComponent(playerName) + '&stage=' + encodeURIComponent(stage));
                 const data = await res.json();
-                if (!data || data.error || !data.turnIndex) { applyTurnData(); return; }
-                currentTurnIndex    = parseInt(data.turnIndex)    || 0;
-                playerCash          = parseFloat(data.playerCash)  || 1000;
+                if (!data || data.error || data.turnIndex == null || data.turnIndex === '') { applyTurnData(); return; }
+                // ★ 저장된 turnIndex가 범위 밖이면 1턴으로 보정 (재접속 시 crash/프리즈 방지)
+                let _ti = parseInt(data.turnIndex);
+                if (isNaN(_ti) || _ti < 0 || _ti >= allData.length) {
+                    _ti = allData.findIndex(d => parseInt(d['턴']) === 1);
+                    if (_ti < 0) _ti = 0;
+                }
+                currentTurnIndex    = _ti;
+                playerCash          = _numOr(data.playerCash, 1000);   // ★ 0을 1000으로 되살리지 않도록 nullish 처리 (공돈 버그 방지)
                 assets              = data.assets        || {Bank:0,Dollar:0,Gold:0};
                 ownedStocks         = data.ownedStocks   || {};
                 avgPrices           = data.avgPrices     || {};
                 totalInvested       = data.totalInvested || {};
-                loanAmount          = parseFloat(data.loanAmount) || 0;
+                loanAmount          = _numOr(data.loanAmount, 0);
                 journalEntries      = data.journalEntries || [];
                 profitStreak        = parseInt(data.profitStreak) || 0;
-                prevNetWorth        = parseFloat(data.prevNetWorth) || 1000;
+                prevNetWorth        = _numOr(data.prevNetWorth, 1000);
                 totalTradeTurns     = parseInt(data.totalTradeTurns) || 0;
                 statsBankOnlyTurns  = parseInt(data.statsBankOnlyTurns) || 0;
                 statsHighBuyLowSell = !!data.statsHighBuyLowSell;
@@ -2224,7 +2285,9 @@
         // 🃏 황금카드 가챠 시스템
         // ══════════════════════════════════════════
         let _gachaCards=[]; let _gachaPicked=false;
-        function drawGoldenCard() { SFX.gacha();
+        function drawGoldenCard() {
+            if (_isReady) { SFX.error(); alert('준비완료 상태에서는 카드를 뽑을 수 없습니다! 준비완료를 취소하세요.'); return; }
+            SFX.gacha();
             if (isCardDrawnThisTurn) return;
             const events = goldenCardEvents;
             const reward = events.reward[Math.floor(Math.random()*events.reward.length)];
@@ -2401,7 +2464,7 @@
         ];
         function getTier(netWorth) {
             const list = window._TIERS || TIERS;
-            return list.find(t => netWorth>=t.min && netWorth<(t.max===null?Infinity:t.max)) || list[0];
+            return list.find(t => netWorth>=t.min && netWorth<=(t.max===null?Infinity:t.max)) || list[0];
         }
         function getTierHtml(netWorth) {
             const t = getTier(netWorth);
@@ -2495,15 +2558,17 @@
             document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
 
             try {
-                // 점수 서버 저장 (group 포함)
-                await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        playerName: pName, totalAsset: finalAsset,
-                        stage: selectedStage, group: selectedGroup,
-                        isMidRanking: !isFinal
-                    })
-                });
+                // 점수 서버 저장 (group 포함) — ★ 교사 본인은 랭킹에 등록하지 않음
+                if (pName !== '교사' && pName !== '선생님') {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            playerName: pName, totalAsset: finalAsset,
+                            stage: selectedStage, group: selectedGroup,
+                            isMidRanking: !isFinal
+                        })
+                    });
+                }
                 _loadRankingData('group');
             } catch(e) {
                 document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
@@ -2523,6 +2588,7 @@
                 }
                 const rankingRes = await fetch(url);
                 let rankingData  = await rankingRes.json();
+                if (!Array.isArray(rankingData)) rankingData = [];
 
                 // 내 기록이 없으면 임시 추가 (그룹 탭에서만)
                 if (tab === 'group') {
