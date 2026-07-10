@@ -904,6 +904,20 @@
 
     <!-- 🎖️ 업적 모달 (중복 방지 - ranking-screen 밖에 위치) -->
 
+    <!-- 👥 그룹명 설정 리마인더 (교사 전용, 3턴부터 미설정 시) -->
+    <div id="groupReminderModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.78); z-index:9500; justify-content:center; align-items:center;">
+        <div style="background:#1f2833; border:2px solid #ffcc00; border-radius:16px; padding:32px 36px; width:430px; max-width:92vw; text-align:center; box-shadow:0 0 40px rgba(255,204,0,0.4);">
+            <div style="font-size:3em; margin-bottom:8px;">⚠️</div>
+            <div style="font-size:1.3em; font-weight:900; color:#ffcc00; margin-bottom:8px;">그룹명이 아직 설정되지 않았습니다!</div>
+            <div style="font-size:0.92em; color:#c5c6c7; margin-bottom:18px; line-height:1.65;">그룹명을 설정하지 않으면 <strong style="color:#ff6b6b;">중간·최종 랭킹이 제대로 표시되지 않습니다.</strong><br>5턴(중간 랭킹) 전에 지금 바로 설정해주세요.<br><span style="color:#a4b0be; font-size:0.9em;">예: 꿈그린캠프A반, 2026-1학년3반</span></div>
+            <input type="text" id="groupReminderInput" placeholder="그룹명 입력" onkeydown="if(event.key==='Enter')applyGroupFromReminder()" style="width:100%; box-sizing:border-box; padding:12px 16px; font-size:1.05em; background:#0b0c10; color:#66fcf1; border:2px solid #45a29e; border-radius:8px; text-align:center; margin-bottom:14px; outline:none;">
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button onclick="applyGroupFromReminder()" style="flex:1; padding:13px; font-size:1.05em; font-weight:900; background:linear-gradient(135deg,#ffcc00,#cc9900); color:#000; border:none; border-radius:8px; cursor:pointer;">✅ 그룹명 적용</button>
+                <button onclick="closeGroupReminder()" style="padding:13px 18px; font-size:0.95em; background:#2c3e50; color:#a4b0be; border:none; border-radius:8px; cursor:pointer;">나중에</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbxF4vXeCFDkD8VAA2TA3mGXjH_V19hpTnjL4E9eU6JGABp_FJmqTlfeWVPSIxm70RpN/exec";
         const TEACHER_PIN = "0224";  // ← 교사 패널 보호: 값을 정하면(예: "48591") 교사 로그인 시 PIN 인증을 요구. 빈 값이면 기존처럼 인증 없음.
@@ -1851,6 +1865,30 @@
             }
         }
 
+        // ══════════════════════════════════════════
+        // 👥 그룹명 설정 리마인더 — 교사가 3턴부터 그룹명 미설정이면 매 턴 모달 안내
+        // ══════════════════════════════════════════
+        let _groupReminderShownTurn = 0;
+        function checkGroupReminder(turnNum) {
+            const pName = document.getElementById('playerName')?.value.trim();
+            if (pName !== '교사' && pName !== '선생님') return;   // 교사만
+            if (selectedGroup) return;                            // 이미 설정됐으면 안 띄움
+            if (turnNum < 3) return;                              // 3턴부터
+            if (_groupReminderShownTurn === turnNum) return;      // 같은 턴 중복 방지 (설정 전이면 다음 턴에 또 안내)
+            _groupReminderShownTurn = turnNum;
+            document.getElementById('groupReminderInput').value = '';
+            document.getElementById('groupReminderModal').style.display = 'flex';
+            setTimeout(() => { const el = document.getElementById('groupReminderInput'); if (el) el.focus(); }, 100);
+        }
+        function applyGroupFromReminder() {
+            const val = document.getElementById('groupReminderInput').value.trim();
+            if (!val) { alert('그룹명을 입력해주세요.'); return; }
+            document.getElementById('groupNameInput').value = val;  // 교사 패널 입력칸에 반영 후 기존 적용 로직 재사용
+            applyGroupName();
+            closeGroupReminder();
+        }
+        function closeGroupReminder() { document.getElementById('groupReminderModal').style.display = 'none'; }
+
         function openTeacherModal() { SFX.click();
             buildTeacherPasswordTable();
             // 이미 설정된 그룹명이 있으면 입력칸에 복원
@@ -1884,6 +1922,7 @@
             updateUI(true);
             checkDarkBroker(turnNum);
             checkGlitchEvent(turnNum);
+            checkGroupReminder(turnNum);
         }
 
         // ══════════════════════════════════════════
