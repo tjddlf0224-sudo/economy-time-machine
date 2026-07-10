@@ -898,6 +898,7 @@
                 <tbody id="rankingBody"><tr><td colspan="5">데이터 수신 중...</td></tr></tbody>
             </table>
         </div>
+        <div id="rankSubmitStatus" style="margin:10px auto 2px; font-size:0.95em; font-weight:700; color:#a4b0be; min-height:1.3em;"></div>
         <br>
         <button id="btnRankingAction" style="font-size: 1.5em; padding: 15px 30px;">기다려주세요...</button>
     </div>
@@ -2535,6 +2536,75 @@
         }
 
         // ══════════════════════════════════════════
+        // 📡 랭킹 안전 제출 — 동시 클릭해도 자동으로 순서 조절
+        //    (지터로 분산 전송 → 시트에 실제 저장됐는지 검증 → 유실 시 자동 재전송)
+        //    GAS가 동시 쓰기 경합 시 같은 행을 덮어써 기록이 유실되는 문제의 클라이언트측 방어
+        // ══════════════════════════════════════════
+        const _sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        let _submitSeq = 0;      // 새 제출 시작 시 이전 제출 루프 중단용
+        let _rankRefreshSeq = 0; // 자동 새로고침 루프 중단용
+
+        function _setRankSubmitStatus(msg, color) {
+            const el = document.getElementById('rankSubmitStatus');
+            if (el) { el.innerText = msg || ''; el.style.color = color || '#a4b0be'; }
+        }
+
+        // 내 기록이 랭킹 시트에 실제로 저장됐는지 확인 (표시에 쓰는 것과 동일한 조회)
+        async function _verifyMyRanking(pName, asset, isFinal) {
+            try {
+                const isMidParam = isFinal ? '' : '&isMid=true';
+                const res  = await fetch(API_URL + '?action=ranking&stage=' + encodeURIComponent(selectedStage) + '&group=' + encodeURIComponent(selectedGroup) + isMidParam);
+                const rows = await res.json();
+                return Array.isArray(rows) && rows.some(r => r.name === pName && Math.abs((parseInt(r.asset) || 0) - asset) <= 1);
+            } catch (e) { return false; }
+        }
+
+        async function submitRankingSafely(pName, asset, isFinal) {
+            if (pName === '교사' || pName === '선생님') return true;  // 교사는 랭킹 미제출
+            const mySeq = ++_submitSeq;
+            const MAX_ROUNDS = 8;
+            _setRankSubmitStatus('📡 내 기록 전송 중... (혼잡하면 자동으로 순서를 조절해요)');
+            // ★ 동시 클릭 분산: 학생마다 0~8초 랜덤 대기 후 전송
+            await _sleep(Math.random() * 8000);
+            for (let round = 1; round <= MAX_ROUNDS; round++) {
+                if (mySeq !== _submitSeq) return false;  // 새 제출이 시작됐으면 이전 루프 종료
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            playerName: pName, totalAsset: asset,
+                            stage: selectedStage, group: selectedGroup,
+                            isMidRanking: !isFinal
+                        })
+                    });
+                } catch (e) {}
+                await _sleep(2500 + Math.random() * 2500);  // 시트 반영 대기
+                if (mySeq !== _submitSeq) return false;
+                if (await _verifyMyRanking(pName, asset, isFinal)) {
+                    _setRankSubmitStatus('✅ 내 기록 저장 확인 완료!', '#aaff55');
+                    if (document.getElementById('ranking-screen').classList.contains('active')) _loadRankingData(_currentRankingTab, true);
+                    return true;
+                }
+                _setRankSubmitStatus('📡 전송 재시도 중... (' + round + '/' + MAX_ROUNDS + ') — 혼잡을 피해 자동 대기');
+                await _sleep(1500 * round + Math.random() * 4000);  // 라운드별 백오프 + 지터
+            }
+            _setRankSubmitStatus('⚠️ 전송이 지연되고 있어요. 잠시 후 [현재 그룹] 탭을 눌러 확인해주세요.', '#ffaa44');
+            return false;
+        }
+
+        // 다른 학생들 기록이 도착하는 동안 랭킹 표를 주기적으로 자동 갱신
+        async function startRankingAutoRefresh(rounds) {
+            const mySeq = ++_rankRefreshSeq;
+            const total = rounds || 7;
+            for (let i = 0; i < total; i++) {
+                await _sleep(9000 + Math.random() * 3000);
+                if (mySeq !== _rankRefreshSeq) return;
+                if (!document.getElementById('ranking-screen').classList.contains('active')) return;
+                _loadRankingData(_currentRankingTab, true);
+            }
+        }
+
+        // ══════════════════════════════════════════
         // 🏆 랭킹 화면 (그룹 탭 / 역대 탭 분리)
         // ══════════════════════════════════════════
         let _rankingIsFinal = false;
@@ -2597,25 +2667,21 @@
             document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
 
             try {
-                // 점수 서버 저장 (group 포함) — ★ 교사 본인은 랭킹에 등록하지 않음
-                if (pName !== '교사' && pName !== '선생님') {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            playerName: pName, totalAsset: finalAsset,
-                            stage: selectedStage, group: selectedGroup,
-                            isMidRanking: !isFinal
-                        })
-                    });
-                }
+                // ★ 점수 안전 제출(백그라운드): 지터 분산 → 저장 검증 → 유실 시 자동 재전송
+                //    교사는 submitRankingSafely 내부에서 제외됨
+                _setRankSubmitStatus('');
+                submitRankingSafely(pName, finalAsset, isFinal);
+                // 표는 즉시 1차 표시(내 기록은 로컬로 우선 표시) 후 자동 새로고침으로 채워짐
                 _loadRankingData('group');
+                startRankingAutoRefresh();
             } catch(e) {
                 document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
             }
         }
 
-        async function _loadRankingData(tab) {
-            document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
+        async function _loadRankingData(tab, silent) {
+            // silent=true: 자동 새로고침용 — 표를 비우지 않고 조용히 갱신(깜빡임 방지)
+            if (!silent) document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>데이터 수신 중...</td></tr>";
             try {
                 let url;
                 if (tab === 'group') {
@@ -2650,7 +2716,8 @@
                     tbody.appendChild(tr);
                 });
             } catch(e) {
-                document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
+                // silent 새로고침 중 일시 오류는 기존 표 유지 (덮어쓰지 않음)
+                if (!silent) document.getElementById('rankingBody').innerHTML = "<tr><td colspan='5'>통신 오류</td></tr>";
             }
         }
     </script>
