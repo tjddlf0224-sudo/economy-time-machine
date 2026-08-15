@@ -1,0 +1,5 @@
+# 비공개 자료 — GitHub Pages(공개)에 절대 올리지 않음
+gas/
+docs/
+.claude/
+.DS_Store
