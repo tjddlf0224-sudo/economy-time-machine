@@ -6,6 +6,8 @@
     <title>경제 타임머신 V6.0</title>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 깔끔한 테마용 글꼴 (어느 기기에서나 같은 한글 모양 — 크롬북에는 맑은 고딕이 없다) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     
     <style>
         * { box-sizing: border-box; user-select: none; }
@@ -565,6 +567,154 @@
         .rv-table tr:hover td { background: transparent; color: inherit; }
         .rv-up { color: #ff6b6b; font-weight: bold; } .rv-down { color: #6ba0ff; font-weight: bold; }
         .rv-note { background: #0b0c10; border-left: 3px solid #ffd700; border-radius: 6px; padding: 10px 14px; line-height: 1.7; font-size: 0.95em; }
+
+        /* ══════════════════════════════════════════
+           🎨 깔끔한 테마 — 배치·기능은 그대로, 색·선·모서리·글꼴만 정돈
+              (주소에 ?theme=classic 을 붙이면 예전 모습)
+        ══════════════════════════════════════════ */
+        body.theme-clean {
+            --bg: #0b1017; --surface: #121a24; --surface2: #182230; --surface3: #1f2b3b;
+            --line: rgba(148, 178, 210, 0.14); --line2: rgba(148, 178, 210, 0.24);
+            --text: #e8eef5; --muted: #8fa0b3; --accent: #5fe3d6; --accent-ink: #062b28; --violet: #a98bfa;
+            --up: #ff5d5d; --down: #4f8dff; --gold: #f6c453; --ok: #3ddc84;
+            font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif;
+            background: var(--bg) radial-gradient(1200px 700px at 50% -10%, #13202e 0%, var(--bg) 60%) no-repeat;
+            color: var(--text); letter-spacing: -0.01em;
+        }
+        .theme-clean #displayCash, .theme-clean #totalNetWorth, .theme-clean .asset-balance strong, .theme-clean td strong,
+        .theme-clean #rateBank, .theme-clean #rateDollar, .theme-clean #rateGold, .theme-clean .trade-box input { font-variant-numeric: tabular-nums; }
+
+        /* 공통 입력·버튼 */
+        .theme-clean input[type="text"], .theme-clean input[type="number"], .theme-clean input[type="password"], .theme-clean select, .theme-clean textarea {
+            background: var(--surface); border: 1px solid var(--line2); color: var(--text); border-radius: 10px; font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .theme-clean input:focus, .theme-clean select:focus, .theme-clean textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(95,227,214,0.18); }
+        .theme-clean select { color: var(--text); }
+        .theme-clean button {
+            font-family: inherit; background: var(--surface2); color: var(--text); border: 1px solid var(--line2);
+            border-radius: 10px; font-weight: 700; transition: background .15s, border-color .15s, transform .08s;
+        }
+        .theme-clean button:hover:not(:disabled) { background: var(--surface3); color: var(--text); border-color: var(--accent); }
+        .theme-clean button:active:not(:disabled) { transform: translateY(1px); }
+        .theme-clean button:disabled { background: #222b36 !important; border-color: transparent !important; color: #5f6c7b !important; }
+        .theme-clean ::-webkit-scrollbar-thumb { background: rgba(148,178,210,0.3); }
+
+        /* 첫 화면 */
+        .theme-clean .neon-text { font-size: 3.6em; font-weight: 800; letter-spacing: -0.03em; text-shadow: none;
+            background: linear-gradient(120deg, #7ff3e6 0%, #5fe3d6 40%, #a98bfa 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-clean #login-screen > p { color: var(--muted); font-size: 1.15em !important; }
+        .theme-clean #roomCode, .theme-clean #playerName { width: 320px !important; height: 52px; font-size: 1.15em; }
+        .theme-clean #startBtn { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); border-radius: 14px; font-size: 1.35em !important; padding: 14px 44px !important; box-shadow: 0 8px 24px rgba(95,227,214,0.22); }
+        .theme-clean #startBtn:hover:not(:disabled) { background: #7ff3e6; color: var(--accent-ink); }
+        .theme-clean #btnIntro { background: transparent; border-color: var(--line2); color: var(--muted); font-size: 1em; padding: 9px 20px; border-radius: 999px; }
+        .theme-clean #btnTeacherEntry { border-radius: 999px !important; border-color: var(--line) !important; }
+
+        /* 머리줄 */
+        .theme-clean header { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 20px; font-weight: 700; }
+        .theme-clean #currentTime { font-weight: 800; letter-spacing: -0.02em; }
+        .theme-clean .progress-container { gap: 3px; }
+        .theme-clean .progress-box { width: 18px; height: 6px; border: none; border-radius: 3px; background: var(--surface3); }
+        .theme-clean .progress-box.active { background: var(--accent); box-shadow: none; }
+        .theme-clean #roomBadge { background: rgba(95,227,214,0.14); color: var(--accent); border: 1px solid rgba(95,227,214,0.35); }
+        .theme-clean .hdr-btn { background: transparent; border-color: var(--line2); color: var(--muted); }
+        .theme-clean #displayCash { color: var(--text) !important; }
+        .theme-clean #totalNetWorth { color: var(--violet) !important; }
+        .theme-clean .btn-teacher { background: var(--gold); color: #2a1f00; border-radius: 999px; box-shadow: none; font-weight: 800; }
+        .theme-clean #tierBadge { box-shadow: none !important; border-radius: 999px; font-size: 0.9em; }
+
+        /* 패널 */
+        .theme-clean .dashboard { gap: 16px; padding-top: 14px; }
+        .theme-clean .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; gap: 10px; }
+        .theme-clean .panel h3 { color: var(--muted); font-size: 0.92em; font-weight: 700; letter-spacing: 0.01em; border-bottom: 1px solid var(--line); padding-bottom: 7px; }
+        .theme-clean .news-paper-container { border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.35) !important; }
+        .theme-clean .indicators p { padding: 7px 0; margin: 0; border-bottom: 1px solid var(--line); font-size: 0.98em; }
+        .theme-clean .indicators p:last-child { border-bottom: none; }
+        .theme-clean .highlight { color: var(--text); }
+        .theme-clean #rateBank { color: var(--gold); }
+        .theme-clean .lp-btns button { background: var(--surface2); border: 1px solid var(--line2); color: var(--text); border-radius: 10px; }
+        .theme-clean #btnGoldenCard { background: linear-gradient(180deg, #ffd66b, #f2b632) !important; border: none !important; color: #2a1f00 !important;
+            box-shadow: 0 6px 18px rgba(246,196,83,0.22) !important; border-radius: 12px !important; font-weight: 800 !important; }
+        .theme-clean #btnGoldenCard:disabled { background: #222b36 !important; color: #5f6c7b !important; box-shadow: none !important; }
+
+        /* 투자 콘솔 */
+        .theme-clean .invest-row, .theme-clean .loan-row { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s; }
+        .theme-clean .invest-row:hover { border-color: var(--line2); }
+        .theme-clean .invest-row[style*="1a2a3a"] { background: linear-gradient(180deg, #1a2638, #182230) !important; border: 1px solid rgba(79,141,255,0.35) !important; }
+        .theme-clean .loan-row { background: linear-gradient(180deg, #2a1a1d, #22181b); border-color: rgba(255,93,93,0.25); }
+        .theme-clean .asset-name { font-size: 1.08em; font-weight: 700; }
+        .theme-clean .asset-balance { color: var(--muted); }
+        .theme-clean .asset-balance strong { color: var(--accent); }
+        .theme-clean .trade-box input { height: 38px; background: var(--surface); }
+        .theme-clean .btn-sm { border-radius: 9px; padding: 9px 13px; font-weight: 800; border: none; }
+        .theme-clean .btn-buy-sm { background: var(--up); color: #fff; }
+        .theme-clean .btn-sell-sm { background: var(--down); color: #fff; }
+        .theme-clean .btn-buy-sm:hover:not(:disabled) { background: #ff7676; border-color: transparent; color: #fff; }
+        .theme-clean .btn-sell-sm:hover:not(:disabled) { background: #6ea2ff; border-color: transparent; color: #fff; }
+        .theme-clean .quick-chips span { border-color: var(--line2); color: var(--muted); border-radius: 999px; padding: 2px 9px; }
+        .theme-clean .quick-chips span:hover { background: rgba(95,227,214,0.14); color: var(--accent); border-color: rgba(95,227,214,0.4); }
+        .theme-clean #btnStockOpen { background: rgba(79,141,255,0.16) !important; border: 1px solid rgba(79,141,255,0.45) !important; color: #bcd3ff !important; border-radius: 10px !important; }
+        .theme-clean #btnReady { border-radius: 12px !important; border: none !important; font-weight: 800 !important; }
+        .theme-clean #btnReady[style*="1a4a00"] { background: #1f9d5c !important; color: #effff5 !important; }      /* 학생: 준비완료 */
+        .theme-clean #btnReady[style*="2a5500"] { background: #173d2a !important; color: #8fe3b3 !important; }      /* 학생: 준비완료 중(누르면 취소) */
+        .theme-clean #btnReady[style*="1a3a6a"] { background: var(--accent) !important; color: var(--accent-ink) !important; }   /* 교사: 다음 분기로 */
+        .theme-clean .loan-row .asset-balance strong { color: var(--up); }
+        .theme-clean #readyLockOverlay { background: rgba(11,16,23,0.72); backdrop-filter: blur(2px); border-radius: 16px; }
+        .theme-clean #readyBanner { background: #10261c; border-top: 1px solid rgba(61,220,132,0.5); box-shadow: 0 -8px 24px rgba(0,0,0,0.4); font-size: 1.05em; }
+
+        /* 창(모달) */
+        .theme-clean .modal-overlay, .theme-clean .etm-overlay { background: rgba(4,8,12,0.72); backdrop-filter: blur(4px); }
+        .theme-clean .modal-content, .theme-clean .etm-box { background: var(--surface); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,0.55); }
+        .theme-clean .modal-header { border-bottom: 1px solid var(--line); }
+        .theme-clean .modal-header h2 { font-weight: 800; letter-spacing: -0.02em; }
+        .theme-clean .etm-title { color: var(--text); font-weight: 800; letter-spacing: -0.02em; }
+        .theme-clean .etm-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+        .theme-clean .etm-primary:hover:not(:disabled) { background: #7ff3e6; color: var(--accent-ink); }
+        .theme-clean .stock-list { background: var(--surface2); border-radius: 12px; padding: 8px; }
+        .theme-clean .stock-item { border-bottom: none; border-radius: 10px; margin-bottom: 2px; font-size: 1.1em; font-weight: 700; }
+        .theme-clean .stock-item:hover { background: var(--surface3); color: var(--text); }
+        .theme-clean .stock-item.active { background: rgba(95,227,214,0.14); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+        .theme-clean .stock-item:hover .stock-desc, .theme-clean .stock-item.active .stock-desc { color: var(--muted); }
+        .theme-clean .chart-area { border-radius: 12px; }
+        .theme-clean .trade-controls { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; }
+        .theme-clean .btn-buy { background: var(--up); border-color: var(--up); color: #fff; }
+        .theme-clean .btn-sell { background: var(--down); border-color: var(--down); color: #fff; }
+        .theme-clean .btn-buy:hover:not(:disabled) { background: #ff7676; color: #fff; }
+        .theme-clean .btn-sell:hover:not(:disabled) { background: #6ea2ff; color: #fff; }
+        .theme-clean #turnReportModal .card-content { background: var(--surface) !important; border: 1px solid rgba(169,139,250,0.45) !important; border-radius: 18px !important; box-shadow: 0 24px 60px rgba(0,0,0,0.55) !important; }
+        .theme-clean #turnReportModal .card-content h2 { text-shadow: none !important; color: var(--violet) !important; letter-spacing: -0.02em; }
+        .theme-clean #turnReportModal .card-content button { background: var(--violet) !important; color: #1a1030 !important; border: none !important; border-radius: 12px; }
+        .theme-clean .ts-card, .theme-clean .guide-step, .theme-clean .rv-card, .theme-clean .rv-note { background: var(--surface2); border-color: var(--line); border-radius: 12px; }
+
+        /* 랭킹 */
+        .theme-clean .ranking-board { background: var(--surface); border: 1px solid var(--line2); box-shadow: 0 18px 50px rgba(0,0,0,0.45); border-radius: 18px; }
+        .theme-clean #rankingSubtitle { color: var(--muted); }
+        .theme-clean #rankingTitle { text-shadow: none; background: linear-gradient(120deg, #c4b5fd, #a98bfa 60%, #7ff3e6); -webkit-background-clip: text; background-clip: text; color: transparent !important; font-size: 2.6em; letter-spacing: -0.03em; }
+        .theme-clean th { background: var(--surface2); color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--line2); }
+        .theme-clean td { border-bottom: 1px solid var(--line); }
+        .theme-clean tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+        .theme-clean tr:hover td { background: rgba(95,227,214,0.07); color: var(--text); }
+        .theme-clean .my-record td { text-shadow: none; }
+        .theme-clean tr.my-record td { background: rgba(169,139,250,0.16) !important; color: var(--text) !important; }
+        .theme-clean #tabBtnGroup, .theme-clean #tabBtnAll { border-radius: 999px !important; }
+
+        /* 교사 패널 */
+        .theme-clean #teacherModal .modal-content { background: var(--surface); border-color: rgba(246,196,83,0.45); box-shadow: 0 24px 60px rgba(0,0,0,0.55); }
+        .theme-clean #teacherModal button[onclick="teacherEndTurn()"] { background: var(--accent) !important; color: var(--accent-ink) !important; border: none !important; border-radius: 12px !important; }
+        .theme-clean #teacherModal button[onclick="teacherFinishGame()"] { background: rgba(169,139,250,0.14) !important; color: #d9ccff !important; border: 1px solid rgba(169,139,250,0.45) !important; border-radius: 12px !important; }
+        .theme-clean #teacherModal button[onclick="openClassReview()"] { background: rgba(246,196,83,0.12) !important; color: var(--gold) !important; border: 1px solid rgba(246,196,83,0.45) !important; border-radius: 12px !important; }
+        .theme-clean #teacherModal button[onclick="teacherResetAllData()"] { background: transparent !important; color: #ff9a9a !important; border: 1px solid rgba(255,93,93,0.45) !important; border-radius: 12px !important; }
+        .theme-clean #teacherModal div[style*="0d1a0d"] { background: var(--surface2) !important; border: 1px solid var(--line2) !important; border-radius: 12px !important; }
+        .theme-clean #teacherModal div[style*="0d1a0d"] > div:first-child { color: var(--text) !important; }
+        .theme-clean #teacherModal button[onclick="teacherForceTurn()"] { background: var(--surface3) !important; color: var(--text) !important; border: 1px solid var(--line2) !important; }
+        .theme-clean #teacherModal select { background: var(--surface) !important; border: 1px solid var(--line2) !important; }
+        .theme-clean #btnBroadcastReady { background: rgba(61,220,132,0.14); color: #9ff0c4; border: 1px solid rgba(61,220,132,0.45); border-radius: 10px; }
+        /* 창 닫기(❌ 이모지) → 차분한 ✕ */
+        .theme-clean .modal-header button { font-size: 0 !important; width: 40px; height: 40px; padding: 0 !important; border-radius: 10px !important; }
+        .theme-clean .modal-header button::after { content: '✕'; font-size: 22px; color: var(--muted); font-weight: 400; }
+        .theme-clean .modal-header button:hover::after { color: var(--text); }
+        .theme-clean .ready-count-box { background: rgba(61,220,132,0.07); border: 1px solid rgba(61,220,132,0.3); border-radius: 12px; }
+        .theme-clean .toast { background: var(--surface2); border-width: 1px; border-radius: 12px; }
     </style>
 </head>
 <body>
@@ -1072,7 +1222,8 @@
             try { if (IS_LOCAL) { const o = new URLSearchParams(location.search).get('api'); if (o) return o; } } catch (e) {}
             return DEFAULT_API_URL;
         })();
-        const TEACHER_PIN = "0224";  // 선생님용 메뉴 PIN
+        const TEACHER_PIN = "0224";
+        try { if (new URLSearchParams(location.search).get('theme') !== 'classic') document.body.classList.add('theme-clean'); } catch (e) { document.body.classList.add('theme-clean'); }  // 선생님용 메뉴 PIN
         function parseNum(str) { if(!str) return 0; return parseFloat(str.toString().replace(/[^0-9.-]/g, '')) || 0; }
         function escHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function _numOr(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
