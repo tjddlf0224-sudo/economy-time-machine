@@ -27,7 +27,7 @@
         button:hover:not(:disabled) { background-color: #66fcf1; color: #0b0c10; }
         button:disabled { background-color: #555 !important; border-color: #444 !important; color: #888 !important; cursor: not-allowed;}
         
-        header { border-bottom: 2px solid #45a29e; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-size: 1.3em; font-weight: bold; background-color: #1f2833; border-radius: 10px 10px 0 0;}
+        header { border-bottom: 2px solid #45a29e; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 1.15em; gap: 12px; font-weight: bold; background-color: #1f2833; border-radius: 10px 10px 0 0;}
         
         .progress-container { display: flex; gap: 4px; margin-top: 5px; }
         .progress-box { width: 15px; height: 15px; background-color: #0b0c10; border: 1px solid #45a29e; border-radius: 3px; }
@@ -266,7 +266,7 @@
         .rank-tier-legend   { background: linear-gradient(135deg,#7c0000,#ff4b4b,#ffd700); color:#fff; animation: legendPulseSm 1.5s infinite; }
         @keyframes legendPulseSm { 0%,100%{box-shadow:0 0 8px #ff4b4b80} 50%{box-shadow:0 0 16px #ffd70080} }
 
-        .btn-teacher { background-color: #ffd700; color: #000; border: none; font-size: 0.9em; padding: 8px 15px; border-radius: 5px; cursor: pointer; display: none; margin-right: 15px; box-shadow: 0 0 10px #ffd700;}
+        .btn-teacher { background-color: #ffd700; color: #000; border: none; font-size: 0.8em; padding: 7px 12px; border-radius: 5px; cursor: pointer; display: none; margin-right: 4px; box-shadow: 0 0 10px #ffd700;}
         .btn-teacher:hover { background-color: #fff; }
         #teacherModal .modal-content { width: 680px; height: auto; max-height: 85%; background: #0b0c10; border-color: #ffd700; box-shadow: 0 0 20px #ffd700; overflow-y: auto; }
         @keyframes pwPulse { 0%,100% { text-shadow: 0 0 8px #88ff00; } 50% { text-shadow: 0 0 24px #ccff00, 0 0 40px #88ff00; } }
@@ -404,7 +404,7 @@
         /* ══════════════════════════════════════════
            🏆 티어 배지
         ══════════════════════════════════════════ */
-        #tierBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px 4px 10px; border-radius: 20px; font-size: 1em; font-weight: 900; margin-left: 18px; letter-spacing: 0.04em; transition: background 0.4s, color 0.4s, box-shadow 0.4s; }
+        #tierBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px 4px 10px; border-radius: 20px; font-size: 1em; font-weight: 900; margin-left: 4px; letter-spacing: 0.04em; transition: background 0.4s, color 0.4s, box-shadow 0.4s; }
         .tier-bronze  { background: linear-gradient(135deg,#6b3a1f,#cd7f32); color:#fff; box-shadow:0 0 10px #cd7f3288; }
         .tier-silver  { background: linear-gradient(135deg,#555,#c0c0c0); color:#fff; box-shadow:0 0 10px #c0c0c088; }
         .tier-gold    { background: linear-gradient(135deg,#b8860b,#ffd700); color:#000; box-shadow:0 0 12px #ffd70099; }
@@ -711,8 +711,8 @@
             <div style="display:flex; gap:10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; white-space: nowrap;">
                 <button id="btnTeacherOpen" class="btn-teacher" onclick="openTeacherModal()">👑 교사 패널 <span id="teacherReadyBadge"></span></button>
 
-                <span style="margin-left:10px;">💰 현금: <span id="displayCash" style="color:#66fcf1;">1000</span>만 원</span>
-                <span style="margin-left:15px;">💎 자산: <strong id="totalNetWorth" style="color:#bc13fe; font-size:1.1em;">1000</strong>만 원 
+                <span>💰 현금: <span id="displayCash" style="color:#66fcf1;">1000</span>만 원</span>
+                <span style="margin-left:4px;">💎 자산: <strong id="totalNetWorth" style="color:#bc13fe; font-size:1.1em;">1000</strong>만 원 
                     <span id="totalReturnRate" style="font-size: 0.9em; color: #a4b0be; margin-left: 5px;">(0.0%)</span>
                 </span>
                 <span id="streakBadge">🔥 <span id="streakCount">0</span>연속 수익!</span>
@@ -1342,7 +1342,9 @@
             // ① 학생 화면의 거래를 먼저 잠그고(새 가격을 먼저 본 학생이 옛 가격으로 사는 것 방지), 모두 받을 때까지 기다린다
             const c = await apiPost({ action: 'broadcastClosing', stage: stateKey, group: selectedGroup, targetTurnIndex: curTurnNum() }, { tries: 3 });
             if (c.status === 'success') {
-                for (let sec = CLOSING_WAIT_SEC; sec > 0; sec--) { setTeacherBtnsLabel('⏳ 넘기는 중… ' + sec); await _sleep(1000); }
+                // 흐른 시간으로 센다 (창이 뒤로 가 타이머가 느려져도 8초가 지나면 넘어감)
+                const t0 = Date.now();
+                while (Date.now() - t0 < CLOSING_WAIT_SEC * 1000) { setTeacherBtnsLabel('⏳ 넘기는 중… ' + Math.max(1, Math.ceil(CLOSING_WAIT_SEC - (Date.now() - t0) / 1000))); await _sleep(1000); }
             }
             setTeacherBtnsLabel('⏳ 넘기는 중…');
             // ② 다음 분기로
