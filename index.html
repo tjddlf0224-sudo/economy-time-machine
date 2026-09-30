@@ -718,6 +718,8 @@
         /* 🖼️ 이모지 자리에 깐 그림 아이콘 (EmojiIcons) — 글자는 투명하게 남겨 둔다 */
         .emo { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: -0.25em; background: center / contain no-repeat; overflow: hidden; line-height: 1.25em; text-align: center; font-style: normal; font-weight: normal; letter-spacing: 0; }
         .emo-t { opacity: 0; font-size: 0.9em; }
+        .emo-off .emo { background: none !important; width: auto; height: auto; overflow: visible; vertical-align: baseline; line-height: inherit; }
+        .emo-off .emo-t { opacity: 1; font-size: 1em; }
     </style>
 </head>
 <body>
@@ -1266,6 +1268,8 @@
             }
             function start() {
                 if (on || !document.body.classList.contains('theme-clean')) return; on = true;
+                // 학교망 등에서 그림 파일을 못 받으면 빈칸이 되지 않게 원래 이모지를 다시 보인다
+                const probe = new Image(); probe.onerror = () => document.body.classList.add('emo-off'); probe.src = ICON_BASE + MAP['🏦'] + '.webp';
                 scan(document.body);
                 obs = new MutationObserver(recs => {
                     for (const r of recs) {
