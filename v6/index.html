@@ -715,6 +715,9 @@
         .theme-clean .modal-header button:hover::after { color: var(--text); }
         .theme-clean .ready-count-box { background: rgba(61,220,132,0.07); border: 1px solid rgba(61,220,132,0.3); border-radius: 12px; }
         .theme-clean .toast { background: var(--surface2); border-width: 1px; border-radius: 12px; }
+        /* 🖼️ 이모지 자리에 깐 그림 아이콘 (EmojiIcons) — 글자는 투명하게 남겨 둔다 */
+        .emo { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: -0.25em; background: center / contain no-repeat; overflow: hidden; line-height: 1.25em; text-align: center; font-style: normal; font-weight: normal; letter-spacing: 0; }
+        .emo-t { opacity: 0; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -1222,8 +1225,59 @@
             try { if (IS_LOCAL) { const o = new URLSearchParams(location.search).get('api'); if (o) return o; } } catch (e) {}
             return DEFAULT_API_URL;
         })();
-        const TEACHER_PIN = "0224";
-        try { if (new URLSearchParams(location.search).get('theme') !== 'classic') document.body.classList.add('theme-clean'); } catch (e) { document.body.classList.add('theme-clean'); }  // 선생님용 메뉴 PIN
+        const TEACHER_PIN = "0224";  // 선생님용 메뉴 PIN
+        try { if (new URLSearchParams(location.search).get('theme') !== 'classic') document.body.classList.add('theme-clean'); } catch (e) { document.body.classList.add('theme-clean'); }
+
+        // 🖼️ 이모지 → 그림 아이콘 (깔끔한 테마에서만). 글자는 그대로 두고 투명하게 가린 뒤 그림을 깐다 —
+        //    innerText·복사·검색 결과는 바뀌지 않는다. 기기마다 달라 보이던 이모지를 한 벌로 맞춘다.
+        const ICON_BASE = '../icons/';
+        const EmojiIcons = (function () {
+            const LIST = '🕒 🔊 🔇 ❓ 💰 💎 📰 📊 📈 📉 💼 🏦 💵 🪙 💳 📓 🃏 ✅ ⏭ 🏁 🗑 🔓 🔒 🛠 📋 👑 🚀 🎬 💾 ✏ 📝 🎓 👋 👆 💡 ⏳ ⚠ 🔍 🗓 🏅 📚 🧭 📏 👥 🌐 👈 🏆 🎖 🔥 🥉 🥈 🥇 💠 ✨ 🎉 🎰 💀 🤝 🚪 💸 👊 💥 ⚡ 🔋 📡 📢 🥚 🏫 🌟 😱 🕵 🛡 💔 ✈ 🏢 🇰🇷 🚗 📱 🦠 💉 ❌ 📦 💬 🔄 ➡ 🤜 💢 🏃 🧓 🦸'.split(' ');
+            const fileOf = (e) => [...e].map(c => c.codePointAt(0).toString(16)).join('-');
+            const MAP = {}; LIST.forEach(e => { MAP[e] = fileOf(e); });
+            // 변형 선택자(FE0F)·피부색·성별(ZWJ ♀♂)이 붙어 와도 한 덩어리로 잡는다
+            const TAIL = '\\uFE0F?(?:[\\u{1F3FB}-\\u{1F3FF}])?(?:\\u200D[\\u2640\\u2642]\\uFE0F?)?';
+            const RE = new RegExp('(?:' + LIST.slice().sort((a, b) => b.length - a.length).map(e => [...e].join('\\uFE0F?') + TAIL).join('|') + ')', 'gu');
+            const TEST = new RegExp(RE.source, 'u');
+            const SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, OPTION: 1, TITLE: 1, CANVAS: 1, svg: 1, text: 1 };
+            let on = false, obs = null;
+            function wrapText(node) {
+                const s = node.nodeValue; if (!s || !TEST.test(s)) return;
+                const p = node.parentNode; if (!p || SKIP[p.nodeName] || (p.classList && p.classList.contains('emo-t'))) return;
+                const frag = document.createDocumentFragment(); let last = 0; RE.lastIndex = 0; let m;
+                while ((m = RE.exec(s))) {
+                    if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+                    const base = [...m[0]][0] === '🇰' ? '🇰🇷' : [...m[0]][0];
+                    const box = document.createElement('span'); box.className = 'emo';
+                    box.style.backgroundImage = 'url(' + ICON_BASE + MAP[base] + '.webp)';
+                    const t = document.createElement('span'); t.className = 'emo-t'; t.textContent = m[0];
+                    box.appendChild(t); frag.appendChild(box); last = m.index + m[0].length;
+                }
+                if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+                p.replaceChild(frag, node);
+            }
+            function scan(root) {
+                if (!root) return;
+                if (root.nodeType === 3) { wrapText(root); return; }
+                if (root.nodeType !== 1 || SKIP[root.nodeName] || (root.classList && root.classList.contains('emo'))) return;
+                const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const list = []; let n;
+                while ((n = w.nextNode())) if (TEST.test(n.nodeValue)) list.push(n);
+                list.forEach(wrapText);
+            }
+            function start() {
+                if (on || !document.body.classList.contains('theme-clean')) return; on = true;
+                scan(document.body);
+                obs = new MutationObserver(recs => {
+                    for (const r of recs) {
+                        if (r.type === 'characterData') wrapText(r.target);
+                        else r.addedNodes.forEach(scan);
+                    }
+                });
+                obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+            }
+            return { start, scan, fileOf, LIST };
+        })();
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', EmojiIcons.start); else setTimeout(EmojiIcons.start, 0);
         function parseNum(str) { if(!str) return 0; return parseFloat(str.toString().replace(/[^0-9.-]/g, '')) || 0; }
         function escHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function _numOr(v, d) { const n = parseFloat(v); return Number.isFinite(n) ? n : d; }
