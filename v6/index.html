@@ -1342,9 +1342,9 @@
             // ① 학생 화면의 거래를 먼저 잠그고(새 가격을 먼저 본 학생이 옛 가격으로 사는 것 방지), 모두 받을 때까지 기다린다
             const c = await apiPost({ action: 'broadcastClosing', stage: stateKey, group: selectedGroup, targetTurnIndex: curTurnNum() }, { tries: 3 });
             if (c.status === 'success') {
-                // 흐른 시간으로 센다 (창이 뒤로 가 타이머가 느려져도 8초가 지나면 넘어감)
+                // 1초씩 8번 세되, 창이 뒤로 가 타이머가 느려졌어도 실제로 8초가 지났으면 바로 넘어간다
                 const t0 = Date.now();
-                while (Date.now() - t0 < CLOSING_WAIT_SEC * 1000) { setTeacherBtnsLabel('⏳ 넘기는 중… ' + Math.max(1, Math.ceil(CLOSING_WAIT_SEC - (Date.now() - t0) / 1000))); await _sleep(1000); }
+                for (let sec = CLOSING_WAIT_SEC; sec > 0 && Date.now() - t0 < CLOSING_WAIT_SEC * 1000; sec--) { setTeacherBtnsLabel('⏳ 넘기는 중… ' + sec); await _sleep(1000); }
             }
             setTeacherBtnsLabel('⏳ 넘기는 중…');
             // ② 다음 분기로
