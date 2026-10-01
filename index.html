@@ -1408,7 +1408,7 @@
             const tries = (opt && opt.tries) || 3; let last = { status: 'error', message: '서버에 연결하지 못했습니다.' };
             for (let i = 0; i < tries; i++) {
                 try {
-                    const res = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(body) }, 25000);
+                    const res = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(body) }, 35000);
                     const d = await res.json();
                     if (d && d.status === 'success') return d;
                     if (d) last = d;
@@ -2481,7 +2481,7 @@
             renderStreakBadge(true);
             refreshCardButton();
             // 전원이 한꺼번에 저장하지 않도록 학생마다 조금씩 늦춰 보낸다 (이 기기에는 즉시 기록됨)
-            markDirty(isTeacher ? 500 : 500 + Math.random() * 6000);
+            markDirty(isTeacher ? 500 : 1000 + Math.random() * 15000);
         }
 
         function closeTurnReportModal() {
@@ -2804,7 +2804,8 @@
                 _logQueue.push(e);
                 if (_logQueue.length > 400) _logQueue.splice(0, _logQueue.length - 400);
                 LS.set(logKey(), JSON.stringify(_logQueue));
-                if (_stateLoaded && !_suppressSave && !_saveTimer) scheduleSave(15000);
+                // 기록만 쌓였을 때는 급히 보내지 않는다 — 다음 저장에 함께 실리고, 그래도 없으면 1분쯤 뒤에 (서버 줄 서기 줄이기)
+                if (_stateLoaded && !_suppressSave && !_saveTimer) scheduleSave(45000 + Math.random() * 30000);
             } catch (x) {}
         }
         function restoreLogQueue() {
@@ -2849,7 +2850,7 @@
             let ok = false;
             let d = null;
             try {
-                const res = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(body) }, 25000);
+                const res = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(body) }, 35000);
                 d = await res.json(); ok = !!(d && d.status === 'success');
             } catch (e) {}
             _saveInFlight = false;
@@ -3009,7 +3010,7 @@
             card.action();
             cardLog.push({ t: pendingCard.turn, k: card.type, n: card.title, a: card.type === 'dud' ? -(card.amount || 0) : (card.amount || 0) });
             pendingCard = null;
-            markDirty(250); logEvent('cardPick', { idx: idx, k: card.type, n: card.title, a: card.amount || 0 });
+            markDirty(1500 + Math.random() * 3000); logEvent('cardPick', { idx: idx, k: card.type, n: card.title, a: card.amount || 0 });
             const el=$id('gcard-'+idx); if (el) el.classList.add('flipped','disabled');
             setTimeout(() => {
                 document.querySelectorAll('.gacha-card').forEach((c,i) => {
@@ -3283,7 +3284,7 @@
             for (let round = 1; round <= MAX_ROUNDS; round++) {
                 if (mySeq !== _submitSeq) return false;
                 try {
-                    await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify({ playerName: pName, totalAsset: asset, stage: selectedStage, group: rankGroup(), isMidRanking: !isFinal }) }, 25000);
+                    await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify({ playerName: pName, totalAsset: asset, stage: selectedStage, group: rankGroup(), isMidRanking: !isFinal }) }, 35000);
                 } catch (e) {}
                 await _sleep(2500 + Math.random() * 2500);
                 if (mySeq !== _submitSeq) return false;
