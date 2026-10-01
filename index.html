@@ -82,6 +82,13 @@
         .lp-row { display: flex; gap: 16px; flex: none; }
         .lp-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
         .lp-btns { display: flex; gap: 10px; flex: none; }
+        .predict-box { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px dashed rgba(169,139,250,0.5); border-radius: 10px; background: rgba(169,139,250,0.07); }
+        .predict-box .pb-q { font-size: 0.86em; white-space: nowrap; color: #d6ccff; }
+        .predict-box .pb-btns { display: flex; gap: 4px; flex: 1; justify-content: flex-end; }
+        .predict-box .pb-btns button { padding: 4px 8px; font-size: 0.8em; border-radius: 7px; border: 1px solid rgba(169,139,250,0.45); background: transparent; color: #e6e1ff; cursor: pointer; white-space: nowrap; }
+        .predict-box .pb-btns button.on { background: #a98bfa; color: #120c26; font-weight: 700; border-color: #a98bfa; }
+        .predict-box.locked .pb-btns button:not(.on) { opacity: 0.4; cursor: default; }
+        .rv-predict { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(169,139,250,0.10); border: 1px solid rgba(169,139,250,0.35); font-size: 0.92em; line-height: 1.5; }
         .lp-btns button { flex: 1; padding: 9px; font-size: 0.95em; font-weight: bold; background: #1f2833; color: #66fcf1; border: 1px solid #45a29e; border-radius: 5px; }
         .hdr-btn { padding: 3px 10px; font-size: 0.6em; border-width: 1px; border-radius: 14px; line-height: 1.3; white-space: nowrap; }
         #roomBadge { display: none; font-size: 0.72em; color: #0b0c10; background: #66fcf1; border-radius: 12px; padding: 2px 10px; font-weight: 900; letter-spacing: 0.05em; }
@@ -941,6 +948,12 @@
                     <button onclick="openHistoryChart()">📈 내 자산 추이</button>
                     <button onclick="openJournal()">📓 투자 일지</button>
                 </div>
+                <div id="predictBox" class="predict-box" style="display:none;">
+                    <div class="pb-q">🔮 이번 분기 <b id="pbAsset">주식 시장</b>은?</div>
+                    <div class="pb-btns">
+                        <button data-v="u" onclick="setPrediction('u')">▲ 오른다</button><button data-v="f" onclick="setPrediction('f')">― 비슷</button><button data-v="d" onclick="setPrediction('d')">▼ 내린다</button><button data-v="i" onclick="setPrediction('i')">🤷 모르겠다</button>
+                    </div>
+                </div>
                 <button id="btnGoldenCard" onclick="drawGoldenCard()" style="width:100%; flex:none; padding: 13px; font-weight: bold; background-color: #ffd700; color: #000; border: 2px solid #daa520; box-shadow: 0 0 15px rgba(255,215,0,0.5);">🃏 황금 카드 뽑기 (이번 분기 1회)</button>
             </div>
 
@@ -1013,6 +1026,7 @@
                     <div class="name-chips" id="notReadyList"><span style="color:#a4b0be;">없음</span></div>
                     <div style="color:#aaffbb; font-size:0.85em; margin-top:8px;">준비한 학생</div>
                     <div class="name-chips" id="readyStudentList"><span style="color:#a4b0be;">없음</span></div>
+                    <div id="teacherVotes" style="margin-top:8px; font-size:0.9em;"></div>
                 </div>
                 <div style="text-align:right; margin-left:12px;">
                     <button id="btnBroadcastReady" onclick="teacherBroadcastUnlock()">🔓 전체 잠금 해제</button>
@@ -1357,6 +1371,8 @@
         let turnHistory = [];      // 분기마다: 들고 있던 자산과 그 결과
         let tradeLog = [];         // 사고판 기록
         let eventLog = [];         // 어둠의 브로커 등 이벤트 기록
+        let predictions = {};      // 🔮 분기 예측 { 턴: 'u'|'f'|'d'|'i' } — 돈은 걸지 않는다
+        let _classVotes = {};      // 반 전체 예측 분포 (서버 집계, 끝난 분기만 보여 준다)
         let startNet = 1000;       // 1분기 시작 자산
         let minNetWorth = 1000;    // 가장 낮았던 자산
         let eggUsed = '';
@@ -1518,13 +1534,14 @@
         function setClosing(v) {
             if (_closing === v) return;
             _closing = v; _closingPolls = 0; _closingAt = Date.now();
-            setFastPoll(v);
+            setFastPoll(v); try { refreshPredictBox(); } catch (e) {}
             if (v) { $id('stockModal').style.display = 'none'; toast('⏳ 선생님이 다음 분기로 넘기고 있어요. 거래가 잠깁니다.', 'warn', 3000); }
             refreshLockOverlay();
         }
         // opt.local: 서버가 이미 알고 있는 변화(분기 넘김 등)라 화면만 바꾼다
         function setReady(val, opt) {
             const changed = _isReady !== val;
+            setTimeout(() => { try { refreshPredictBox(); } catch (e) {} }, 0);
             _isReady = val; readyTurn = val ? curTurnNum() : 0;
             const btn = $id('btnReady');
             if (val) { btn.innerText = '⏳ 준비완료 (누르면 취소)'; btn.style.background = '#2a5500'; btn.style.color = '#aaff55'; }
@@ -1564,6 +1581,10 @@
             $id('notReadyList').innerHTML = chips(waiting, 'chip-wait');
             $id('readyStudentList').innerHTML = chips(ready, 'chip-ready');
             $id('teacherReadyBadge').innerText = players.length ? '(' + ready.length + '/' + players.length + ')' : '';
+            {   // 🔮 이번 분기 반 예측 (교사 화면에만 — 토론 거리)
+                const el = $id('teacherVotes'); const t = curTurnNum(); const v = st.votes && st.votes[t];
+                if (el) el.innerHTML = '🔮 이번 분기 예측 (' + escHtml(predictAssetOf(t).icon + ' ' + predictAssetOf(t).label) + '): ' + (v && v.n ? '▲ ' + v.u + '명 · ― ' + v.f + '명 · ▼ ' + v.d + '명 · 🤷 ' + v.i + '명' : '아직 없음') + ' <span style="color:#a4b0be;">(학생 화면에는 분기가 끝난 뒤에만 보여요)</span>';
+            }
             const btn = $id('btnReady');
             if (btn && isTeacher && !_teacherBusy) btn.innerText = teacherBtnLabel();
 
@@ -1773,6 +1794,7 @@
             const sig = d.sig;
             // 선생님이 방을 초기화함
             if (Number(sig.epoch) && Number(sig.epoch) !== roomEpoch) return onRoomReset();
+            if (d.votes && typeof d.votes === 'object') { _classVotes = d.votes; const el = $id('reportPredict'); if (el && el.dataset.t) el.innerHTML = predictResultHtml(parseInt(el.dataset.t)); }
             if (gameFinished) return;
             if (tutOn() && (sig.closing || sig.nextTurn && sig.isFinal || (parseInt(sig.targetTurnIndex) || 0) > curTurnNum() || (d.force && d.force.found))) {
                 Tut.abort('turn'); toast('선생님이 다음 분기로 넘기고 있어서 연습을 마칩니다.', 'warn', 3000);
@@ -2413,7 +2435,7 @@
             journalEntries = []; profitStreak = 0; totalTradeTurns = 0; tradeThisTurn = false; statsBankOnlyTurns = 0; statsHighBuyLowSell = false;
             statsStocksBought = {}; statsStocksSold = {}; lastBuyPrice = {};
             _darkBrokerUsed = false; _dbPending = null; _glitchUsed = false; _bgShown = false;
-            cardTurn = 0; pendingCard = null; cardLog = []; turnHistory = []; tradeLog = []; eventLog = [];
+            cardTurn = 0; pendingCard = null; cardLog = []; turnHistory = []; tradeLog = []; eventLog = []; predictions = {};
             eggUsed = ''; readyTurn = 0; stateRev = 0; gameFinished = false; joinIdx = currentTurnIndex;
             initDarkBrokerTurn(); initGlitchTurn();
             const egg = window._pendingEgg; window._pendingEgg = null;
@@ -2489,6 +2511,8 @@
             if (r.loanInterest > 0) html += '<div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(255,75,75,0.3);margin-top:8px;padding-top:8px;"><span>💳 대출 이자:</span><strong style="color:#ff4b4b">-' + r.loanInterest + '만 원</strong></div>';
             const total = r.interest + r.dollarProfit + r.goldProfit + r.stockDiff - r.loanInterest;
             html += '<div style="display:flex;justify-content:space-between;border-top:2px solid #45a29e;margin-top:10px;padding-top:8px;font-size:1.08em;"><span>이번 분기 합계:</span><strong style="color:' + col(total) + '">' + sign(total) + total + '만 원</strong></div>';
+            const doneT = curTurnNum() - 1;   // 방금 끝난 분기
+            if (!isTeacher && predictAssetOf(doneT)) { const ph = predictResultHtml(doneT); if (ph) html += '<div id="reportPredict" class="rv-predict" data-t="' + doneT + '">' + ph + '</div>'; }
             $id('reportContent').innerHTML = html;
 
             const nextTurnNum = curTurnNum();
@@ -2803,7 +2827,7 @@
                 journalEntries, profitStreak, prevNetWorth, totalTradeTurns, tradeThisTurn, statsBankOnlyTurns, statsHighBuyLowSell,
                 statsStocksBought, statsStocksSold, lastBuyPrice, tradeHistory,
                 _darkBrokerUsed, _darkBrokerTurn, _dbPending, _glitchUsed, _glitchTurn, _bgShown,
-                cardTurn, pendingCard, cardLog, turnHistory, tradeLog, eventLog, eggUsed, startNet, minNetWorth, readyTurn, joinIdx,
+                cardTurn, pendingCard, cardLog, turnHistory, tradeLog, eventLog, predictions, eggUsed, startNet, minNetWorth, readyTurn, joinIdx,
                 netWorth: netFloor(), rev: stateRev, deviceId, sid: sessionId, w: _dirtyWhy, epoch: roomEpoch, finished: gameFinished
             };
         }
@@ -2947,6 +2971,7 @@
             turnHistory         = arr(data.turnHistory);
             tradeLog            = arr(data.tradeLog);
             eventLog            = arr(data.eventLog);
+            predictions         = obj(data.predictions);
             eggUsed             = String(data.eggUsed || '');
             startNet            = _numOr(data.startNet, initialCash);
             minNetWorth         = _numOr(data.minNetWorth, initialCash);
@@ -3104,6 +3129,60 @@
         }
 
         function initChart() { var options={series:[{data:[]}],chart:{type:'candlestick',height:300,width:'100%',toolbar:{show:false},animations:{enabled:false}},plotOptions:{candlestick:{colors:{upward:'#ff4b4b',downward:'#4b8bff'}}},xaxis:{type:'category',tickPlacement:'between',labels:{show:true,hideOverlappingLabels:false,style:{colors:'#000',fontSize:'11px',fontWeight:'bold'}}},yaxis:{tooltip:{enabled:true},labels:{style:{colors:'#000'},formatter:function(val){return val.toFixed(1)+"만";}}},grid:{borderColor:'#e0e0e0',padding:{bottom:10}},annotations:{yaxis:[],points:[]}}; chartInstance=new ApexCharts(document.querySelector("#chart"),options); chartInstance.render(); }
+        // ══════════════════════════════════════════
+        // 🔮 분기 예측 — 이번 분기 한 자산이 오를지·내릴지 한 번 눌러 본다 (돈은 걸지 않는다)
+        //    질문 자산은 주식 시장 → 달러 → 금 순서로 돌아간다 ('많이 움직일 자산'을 고르면 그 자체가 힌트가 되므로)
+        //    반 전체 결과는 분기가 끝난 뒤에만 보여 준다 (남을 따라 하지 않게)
+        // ══════════════════════════════════════════
+        const PREDICT_ASSETS = [{ k: 'stock', label: '주식 시장', icon: '📈' }, { k: 'dollar', label: '달러 환율', icon: '💵' }, { k: 'gold', label: '금값', icon: '🪙' }];
+        const PREDICT_TEXT = { u: '▲ 오른다', f: '― 비슷', d: '▼ 내린다', i: '🤷 모르겠다' };
+        function predictAssetOf(t) { return PREDICT_ASSETS[((parseInt(t) || 1) - 1) % PREDICT_ASSETS.length]; }
+        // 행 idx → idx+1 의 실제 변화(%) — 주식 시장은 종목 단순 평균
+        function predictActual(idx, key) {
+            const a = allData[idx], b = allData[idx + 1]; if (!a || !b) return null;
+            if (key === 'dollar') return (parseNum(b['💵 달러(환율)']) / parseNum(a['💵 달러(환율)']) - 1) * 100;
+            if (key === 'gold') return (parseNum(b['🪙 금괴(1g)']) / parseNum(a['🪙 금괴(1g)']) - 1) * 100;
+            const r = availableStocks.map(st => { const x = parseNum(a[st + '_종가']), y = parseNum(b[st + '_종가']); return x > 0 && y > 0 ? y / x - 1 : null; }).filter(v => v !== null);
+            return r.length ? r.reduce((p, q) => p + q, 0) / r.length * 100 : null;
+        }
+        const predictClass = (pct) => pct === null ? null : pct > 3 ? 'u' : pct < -3 ? 'd' : 'f';
+        function predictLocked() { return _isReady || _closing || gameFinished || _viewOnly; }
+        function setPrediction(v) {
+            if (isTeacher || !allData.length) return;
+            if (predictLocked()) { toast(_isReady ? '준비완료를 취소하면 예측을 바꿀 수 있어요.' : '지금은 예측을 바꿀 수 없어요.', 'warn', 2200); return; }
+            const t = curTurnNum(); if (!(t >= 1) || t >= totalTurns()) return;
+            const same = predictions[t] === v;
+            if (same) delete predictions[t]; else predictions[t] = v;
+            logEvent('predict', { t: t, a: predictAssetOf(t).k, v: same ? '' : v });
+            markDirty(4000); refreshPredictBox();
+        }
+        function refreshPredictBox() {
+            const box = $id('predictBox'); if (!box) return;
+            const t = curTurnNum();
+            const show = !isTeacher && !!allData.length && t >= 1 && t < totalTurns() && !gameFinished && onScreen('game-screen');
+            box.style.display = show ? 'flex' : 'none'; if (!show) return;
+            const a = predictAssetOf(t); $id('pbAsset').textContent = a.icon + ' ' + a.label;
+            box.querySelectorAll('.pb-btns button').forEach(b => b.classList.toggle('on', predictions[t] === b.dataset.v));
+            box.classList.toggle('locked', predictLocked());
+        }
+        // 끝난 분기 t 의 예측 결과 한 덩이 (결산 보고서·복기에서 씀)
+        function predictResultHtml(t) {
+            const idx = allData.findIndex(d => parseInt(d['턴']) === t); if (idx < 0) return '';
+            const a = predictAssetOf(t), pct = predictActual(idx, a.k); if (pct === null) return '';
+            const real = predictClass(pct), mine = predictions[t];
+            const arrow = (c) => ({ u: '▲', f: '―', d: '▼' })[c];
+            let h = '🔮 <b>' + a.icon + ' ' + a.label + '</b> 실제: ' + arrow(real) + ' ' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+            if (mine) h += ' · 내 예측: ' + PREDICT_TEXT[mine] + (mine === 'i' ? '' : mine === real ? ' <b style="color:#3ddc84;">맞았어요!</b>' : ' <span style="color:#ff9a9a;">빗나갔어요</span>');
+            else h += ' · 이번엔 예측하지 않았어요';
+            const v = _classVotes && _classVotes[t];
+            if (v && v.n) {
+                const pc = (k) => Math.round(v[k] / v.n * 100);
+                const hit = real === 'u' ? v.u : real === 'd' ? v.d : v.f;
+                h += '<br><span style="color:#a4b0be;">우리 반 ' + v.n + '명: ▲ ' + pc('u') + '% · ― ' + pc('f') + '% · ▼ ' + pc('d') + '% · 🤷 ' + pc('i') + '% — 맞힌 친구 ' + hit + '명</span>';
+            }
+            return h;
+        }
+
         // ⛔ 거래정지: 시나리오 시트에 '종목_정지' 칸이 1인 분기에는 사고팔 수 없다 (예: 1997 J은행 — 실제 제일은행 99년 3분기부터 거래 정지)
         function isHalted(st, idx) {
             const d = allData[idx === undefined ? currentTurnIndex : idx];
@@ -3300,6 +3379,7 @@
 
         function updateUI(triggerEffect) {
             try { refreshHaltMarks(); } catch (e) {}
+            try { refreshPredictBox(); } catch (e) {}
             $id('displayCash').innerText=Math.floor(playerCash);
             $id('modalCash').innerText=Math.floor(playerCash);
             $id('valBank').innerText=Math.floor(assets.Bank);
@@ -3861,6 +3941,12 @@
                 html += '<tr><td style="width:190px;">' + escHtml(x.name) + '</td><td class="' + cls(x.r) + '" style="width:110px;">' + sg(x.r) + x.r.toFixed(0) + '%</td><td><div style="height:10px;border-radius:5px;width:' + w + '%;background:' + (x.r >= 0 ? '#ff6b6b' : '#6ba0ff') + ';"></div></td></tr>';
             });
             html += '</tbody></table>';
+            {   // 🔮 분기 예측 돌아보기
+                const ts = Object.keys(predictions).map(Number).filter(t => t >= 1).sort((a, b) => a - b);
+                let n = 0, hit = 0, idk = 0;
+                ts.forEach(t => { const idx = allData.findIndex(d => parseInt(d['턴']) === t); const pct = idx >= 0 ? predictActual(idx, predictAssetOf(t).k) : null; if (pct === null) return; if (predictions[t] === 'i') { idk++; return; } n++; if (predictions[t] === predictClass(pct)) hit++; });
+                if (n + idk > 0) html += '<h3>🔮 분기 예측 돌아보기</h3><div class="rv-note">' + (n ? n + '번 예측해서 <b>' + hit + '번</b> 맞혔어요 (' + Math.round(hit / n * 100) + '%).' : '') + (idk ? ' \'모르겠다\'를 ' + idk + '번 골랐어요.' : '') + '<br>세 가지(오른다·비슷·내린다) 중 하나를 그냥 고르면 3번에 1번쯤 맞아요. 나는 그보다 잘 맞혔나요? 미래를 맞히기 어렵다면, 어떻게 투자하는 게 안전할까요?</div>';
+            }
             if (HISTORY_NOTES[selectedStage]) html += '<h3>📚 실제 역사에서는</h3><div class="rv-note">' + HISTORY_NOTES[selectedStage] + '</div>';
             html += '<div class="rv-note" style="margin-top:14px;border-left-color:#66fcf1;">💬 생각해 보기: 위기가 왔을 때 나는 어떻게 움직였나요? 다시 한다면 무엇을 다르게 할까요?</div>';
 
