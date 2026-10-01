@@ -3144,15 +3144,30 @@
         // ══════════════════════════════════════════
         // 🎖️ 엔딩 업적 시스템
         // ══════════════════════════════════════════
+        // 위에서부터 처음 맞는 하나만 준다. 배지는 행동을 끈다(AMF 실험: 위험을 보상하면 위험 선택이 는다) —
+        // 그래서 '과정' 칭호를 맨 앞에, 몰빵·잦은 매매·운을 보상하는 칭호(다이아몬드 손·단타의 신·행운의 별·역전의 명수)는 맨 뒤에 둔다.
+        // 과정 칭호의 기준 (riskStats 참고, 12분기 판 기준):
+        //  위기 관리자 — 기록 4분기 이상, 위험 자산(달러·금·주식)을 평균 30% 이상 들고서도 최대 낙폭이 주식 평균 낙폭의 절반 이내.
+        //               주식 평균 낙폭이 15% 미만이면 '위기'가 없었던 것이라 주지 않는다. 예금만 한 학생은 30% 조건에서 빠진다.
+        //  분산 투자자 — 기록 4분기 이상, 가장 큰 한 곳 비중 평균 50% 이하 + 10% 넘게 담은 곳이 평균 3곳 이상,
+        //               폭락 분기(주식 평균 -15% 이하)에도 한 곳이 60%를 넘지 않음. (현금·예금은 한 바구니로 센다)
+        //  꾸준한 기록가 — 참여한 분기의 70% 이상(최소 4개)에 10자 넘는 일지. 결석·늦은 입장·마지막 분기 정도는 빠져도 된다.
+        //  원칙 투자자 — 기록 6분기 이상, 대출 0, 폭락 직후 주식 절반 넘게 팔기(패닉 셀) 0, 브로커 내기 수락 0,
+        //               위험 자산 한 곳에 80% 넘게 담은 분기(몰빵) 0,
+        //               위험 자산을 20% 이상 담은 분기가 절반 이상(예금만 하면 원칙을 시험받을 일이 없으므로).
         const ACHIEVEMENTS = [
-            { id:'diamond_hand', icon:'💎', name:'다이아몬드 손', desc:'한 종목만 매수하고 단 한 번도 팔지 않고 끝까지 버텼습니다!', check: () => { const bk=Object.keys(statsStocksBought); const sk=Object.keys(statsStocksSold); const first=tradeLog.find(t=>t.n===bk[0]&&t.k==='B'); return bk.length===1&&sk.length===0&&ownedStocks[bk[0]]>0&&!!first&&first.t<=totalTurns()-6; } },
+            { id:'crisis_manager', icon:'🛟', name:'위기 관리자', desc:'위기 속에서도 내 자산은 덜 흔들렸어요! 최대 낙폭이 주식 평균의 절반도 안 됐습니다.', check: () => { const r=riskStats(); return r.ok&&r.n>=4&&r.market.pct<=-15&&r.avgRisk>=0.3&&r.my.pct>=r.market.pct/2; } },
+            { id:'diversifier', icon:'🧺', name:'분산 투자자', desc:'여러 바구니에 나눠 담아 위기를 건넜습니다. 한 곳이 흔들려도 전체는 버텼어요!', check: () => { const r=riskStats(); return r.ok&&r.n>=4&&r.avgTop<=0.5&&r.avgCount>=3&&r.crashTopMax<=0.6; } },
+            { id:'journal_keeper', icon:'📝', name:'꾸준한 기록가', desc:'거의 매 분기 투자 일지를 남겼습니다. 생각을 적는 투자자가 더 많이 배웁니다!', check: () => { const r=riskStats(); const done=new Set(journalEntries.filter(e=>e&&String(e.note||'').trim().length>=10&&e.turn>=r.joinTurn).map(e=>e.turn)).size; return done>=Math.max(4,Math.ceil(r.played*0.7)); } },
+            { id:'principled', icon:'🧭', name:'원칙 투자자', desc:'빚 없이, 몰빵 없이, 겁먹고 팔지 않고 끝까지 내 원칙대로 투자했습니다!', check: () => { const r=riskStats(); return r.ok&&r.n>=6&&!r.usedLoan&&!r.panic.length&&!r.brokerBet&&!r.conc&&r.riskQuarters>=r.n/2; } },
             { id:'human_indicator', icon:'📉', name:'인간 지표', desc:'고점에서 사고 저점에서 팔았습니다. 반대로만 했어도 부자가 됐을 텐데...', check: () => statsHighBuyLowSell&&(netWorthNow()<initialCash*0.9) },
-            { id:'comeback_kid', icon:'🔥', name:'역전의 명수', desc:'한때 자산이 크게 줄었지만 끝내 원금보다 불려 냈습니다!', check: () => minNetWorth<initialCash*0.7&&netWorthNow()>=initialCash*1.2 },
             { id:'bank_villain', icon:'🏦', name:'예금 빌런', desc:'오직 은행 예금만 믿은 요원. 안정적이지만 아쉽네요.', check: () => { const st=Object.values(statsStocksBought).reduce((a,b)=>a+b,0); return st===0&&assets.Bank>0&&assets.Dollar===0&&assets.Gold===0&&statsBankOnlyTurns>=8; } },
-            { id:'scalping_god', icon:'⚡', name:'단타의 신', desc:'매 분기마다 주식을 사고팔며 시장을 휘저었습니다!', check: () => totalTradeTurns>=9 },
-            { id:'lucky_star', icon:'🌟', name:'행운의 별', desc:'거래는 거의 안 했는데 자산이 2배 이상! 타고난 운의 요원!', check: () => netWorthNow()>=initialCash*2&&tradeLog.filter(t=>t.k==='B'||t.k==='S').length<=3 },
             { id:'gold_hoarder', icon:'🪙', name:'금괴 수집가', desc:'금 본위제를 신봉하는 요원! 금괴 200만 원 이상 보유!', check: () => assets.Gold>=200 },
             { id:'dollar_diplomat', icon:'💵', name:'달러 외교관', desc:'달러 보유액 300만 원 이상으로 마감!', check: () => assets.Dollar>=300 },
+            { id:'comeback_kid', icon:'🔥', name:'역전의 명수', desc:'한때 자산이 크게 줄었지만 끝내 원금보다 불려 냈습니다!', check: () => minNetWorth<initialCash*0.7&&netWorthNow()>=initialCash*1.2 },
+            { id:'diamond_hand', icon:'💎', name:'다이아몬드 손', desc:'한 종목만 매수하고 단 한 번도 팔지 않고 끝까지 버텼습니다!', check: () => { const bk=Object.keys(statsStocksBought); const sk=Object.keys(statsStocksSold); const first=tradeLog.find(t=>t.n===bk[0]&&t.k==='B'); return bk.length===1&&sk.length===0&&ownedStocks[bk[0]]>0&&!!first&&first.t<=totalTurns()-6; } },
+            { id:'scalping_god', icon:'⚡', name:'단타의 신', desc:'매 분기마다 주식을 사고팔며 시장을 휘저었습니다!', check: () => totalTradeTurns>=9 },
+            { id:'lucky_star', icon:'🌟', name:'행운의 별', desc:'거래는 거의 안 했는데 자산이 2배 이상! 타고난 운의 요원!', check: () => netWorthNow()>=initialCash*2&&tradeLog.filter(t=>t.k==='B'||t.k==='S').length<=3 },
         ];
         // 시트 '업적'에 같은 id가 있으면 이름·설명·아이콘은 시트 것을 쓴다 (조건은 코드에 있다)
         function achievementList() {
@@ -3632,6 +3647,107 @@
             availableStocks.forEach(st => out.push({ name: '📈 ' + st, r: pct(benchSeries(st, n)), key: st }));
             return { list: out.sort((a, b) => b.r - a.r), n };
         }
+        // ══════════════════════════════════════════
+        // 🛡️ 위험 돌아보기 — turnHistory·tradeLog·eventLog·시나리오 가격만으로 계산 (서버·저장 형식 변경 없음)
+        // ══════════════════════════════════════════
+        // 주식 평균(6종목 단순 평균)이 한 분기에 15% 넘게 빠지면 '폭락 분기'.
+        // 시나리오 표로는 1997 2·3분기, 2008 1·2·3·9분기, 2020 1·9분기가 여기에 든다.
+        const CRASH_PCT = -15;
+        // 고점 대비 가장 크게 떨어진 비율(%)과 그 구간
+        function maxDrawdown(vals, labels) {
+            let peak = null, pk = 0, best = { pct: 0, from: '', to: '' };
+            vals.forEach((v, i) => {
+                if (v === null || v === undefined) return;
+                if (peak === null || v > peak) { peak = v; pk = i; }
+                else if (peak > 0) { const p = (v / peak - 1) * 100; if (p < best.pct && p <= -0.5) best = { pct: p, from: labels ? labels[pk] : pk, to: labels ? labels[i] : i }; }
+            });
+            return best;
+        }
+        function riskStats() {
+            const s = netSeries(); const from = s.from; const span = Math.max(1, currentTurnIndex - from + 1);
+            const idxOf = {}; allData.forEach((d, i) => { const t = parseInt(d['턴']); if (!(t in idxOf)) idxOf[t] = i; });
+            const px = (i, st) => parseNum((allData[i] || {})[st + '_종가']);
+            const stocks = availableStocks.filter(st => px(from, st) > 0);
+            const isStock = (x) => (x.k === 'B' || x.k === 'S') && x.q > 0 && availableStocks.indexOf(x.n) >= 0;
+            const sumSeries = (list) => { const o = []; list.forEach(sr => sr.forEach((v, i) => { o[i] = (o[i] || 0) + v; })); return o; };
+            // 비교: 주식 6종목을 골고루 사서 들고만 있었다면 / 예금·달러·금·주식에 1/4씩 나눠 두고 손대지 않았다면
+            const market = stocks.length ? sumSeries(stocks.map(st => benchSeries(st, span, startNet / stocks.length, from))) : [];
+            const parts = stocks.length ? 4 : 3;
+            const even = sumSeries(['bank', 'dollar', 'gold'].map(k => benchSeries(k, span, startNet / parts, from)).concat(stocks.map(st => benchSeries(st, span, startNet / parts / stocks.length, from)))).map(Math.round);
+            const mktRet = (i) => { const r = stocks.filter(st => px(i, st) > 0 && px(i + 1, st) > 0).map(st => px(i + 1, st) / px(i, st) - 1); return r.length && i + 1 <= currentTurnIndex ? r.reduce((a, b) => a + b, 0) / r.length * 100 : null; };
+
+            // 분기별 보유: 주식은 tradeLog로 종목별 수량을 다시 쌓아 나눈다.
+            // tradeLog는 150개까지만 남으므로, 다시 쌓은 수량이 지금 보유와 다르면 종목을 나누지 않고 '주식' 한 묶음으로 본다.
+            const trades = tradeLog.filter(isStock); const fin = {};
+            trades.forEach(x => { fin[x.n] = (fin[x.n] || 0) + (x.k === 'B' ? x.q : -x.q); });
+            const perStock = availableStocks.every(st => (fin[st] || 0) === (ownedStocks[st] || 0));
+            const qtyAt = (t, st) => trades.reduce((q, x) => q + (x.n === st && x.t <= t ? (x.k === 'B' ? x.q : -x.q) : 0), 0);
+            const byTurn = {}; turnHistory.forEach(h => { byTurn[h.t] = h; });
+            const rows = turnHistory.filter(h => h && Array.isArray(h.a)).map(h => {
+                const a = h.a, i = idxOf[h.t]; const b = { '현금·예금': (a[0] || 0) + (a[1] || 0), '달러': a[2] || 0, '금': a[3] || 0 };
+                if (a[4] > 0) {
+                    let split = null;
+                    if (perStock && i !== undefined) { const v = {}; let sum = 0; availableStocks.forEach(st => { const q = qtyAt(h.t, st); if (q > 0) { v[st] = q * px(i, st); sum += v[st]; } }); if (sum > 0) split = Object.keys(v).map(st => [st, a[4] * v[st] / sum]); }
+                    if (split) split.forEach(x => { b[x[0]] = x[1]; }); else b['주식'] = a[4];
+                }
+                const gross = Object.keys(b).reduce((g, k) => g + Math.max(0, b[k]), 0); if (gross <= 0) return null;
+                const top = Object.keys(b).sort((x, y) => b[y] - b[x])[0];
+                return { t: h.t, p: h.p, top, topW: b[top] / gross, topV: b[top], risk: 1 - Math.max(0, b['현금·예금']) / gross, count: Object.keys(b).filter(k => b[k] / gross >= 0.1).length, crash: i !== undefined && mktRet(i) !== null && mktRet(i) <= CRASH_PCT };
+            }).filter(Boolean);
+            const n = rows.length; const avg = (f) => n ? rows.reduce((a, r) => a + f(r), 0) / n : 0;
+            const topCount = {}; rows.forEach(r => { topCount[r.top] = (topCount[r.top] || 0) + 1; });
+            const mainTop = Object.keys(topCount).sort((x, y) => topCount[y] - topCount[x])[0] || '';
+
+            // 폭락 분기 t 다음 분기(t+1)에 한 일: 주식을 절반 넘게 팔았나(패닉 셀) / 오히려 샀나 / 그대로 버텼나
+            const panic = [], dip = [], held = [];
+            rows.filter(r => r.crash).forEach(r => {
+                const h = byTurn[r.t], i2 = idxOf[r.t + 1]; if (!h || i2 === undefined || i2 > currentTurnIndex) return;
+                const stockNow = (h.a[4] || 0) + ((h.d || [])[3] || 0);
+                const net = trades.filter(x => x.t === r.t + 1).reduce((v, x) => v + (x.k === 'S' ? x.a : -x.a), 0);   // +면 판 돈이 더 많다
+                const ev = { p: turnLabelOfIndex(i2), after: mktRet(i2) };
+                if (stockNow > 0 && net >= stockNow * 0.5 && net >= 30) panic.push(ev);
+                else if (-net >= (h.n1 || startNet) * 0.1) dip.push(ev);
+                else if (stockNow >= (h.n1 || startNet) * 0.2) held.push(ev);
+            });
+            // 30% 넘게 오른 바로 다음 분기에 그 종목을 산 경우 (시작 자산의 5% 이상 산 것만)
+            const chase = trades.filter(x => x.k === 'B' && x.a >= startNet * 0.05).filter(x => { const i = idxOf[x.t], p = idxOf[x.t - 1]; return i !== undefined && p !== undefined && px(p, x.n) > 0 && px(i, x.n) / px(p, x.n) - 1 >= 0.3; }).map(x => ({ n: x.n, p: turnLabelOfIndex(idxOf[x.t]) }));
+            const conc = rows.filter(r => r.top !== '현금·예금' && r.topW >= 0.8).sort((x, y) => y.topW - x.topW)[0] || null;
+            const joinTurn = parseInt((allData[from] || {})['턴']) || 1;
+            return {
+                ok: n >= 2, n, from, evenSeries: even,
+                my: maxDrawdown(s.mine, s.labels), market: maxDrawdown(market), even: maxDrawdown(even),
+                avgTop: avg(r => r.topW), avgRisk: avg(r => r.risk), avgCount: avg(r => r.count), mainTop,
+                crashTopMax: rows.filter(r => r.crash).reduce((m, r) => Math.max(m, r.topW), 0),
+                riskQuarters: rows.filter(r => r.risk >= 0.2).length, conc, panic, dip, held, chase,
+                usedLoan: loanAmount > 0 || tradeLog.some(x => x.k === 'L') || turnHistory.some(h => h && h.a && h.a[5] > 0),
+                loanInterest: -turnHistory.reduce((v, h) => v + ((h && h.d && h.d[4]) || 0), 0),
+                brokerBet: eventLog.some(e => e && e.k === 'broker' && !e.refused),
+                joinTurn, played: Math.max(1, curTurnNum() - joinTurn + 1)
+            };
+        }
+        // 가장 큰 한 곳 비중 → 쉬운 말 (40% 이하면 3곳 이상에 나뉜 셈, 80% 넘으면 사실상 한 곳)
+        function spreadLabel(top, mainTop) {
+            if (top <= 0.4) return '골고루 나눔 🧺';
+            if (top <= 0.6) return '적당히 나눔';
+            if (top <= 0.8) return '한쪽으로 쏠림';
+            return mainTop === '현금·예금' ? '거의 현금·예금 한 바구니' : '한 바구니에 몰아 담음';
+        }
+        // 습관 진단: 잘한 점 2개 + 생각해 볼 점 2개까지. 정답을 알려 주기보다 질문으로 끝낸다.
+        function riskDiagnosis(r) {
+            const good = [], think = []; const pctTxt = (v) => (v >= 0 ? '+' : '') + Math.round(v) + '%';
+            if (r.dip.length) good.push('📥 폭락 직후(' + escHtml(r.dip[0].p) + ')에 오히려 주식을 샀어요. 남들이 겁낼 때 산 용기! 그 회사가 위기를 버틸 수 있는지도 확인했나요?');
+            if (r.held.length && !r.panic.length) good.push('🪨 폭락이 온 뒤(' + escHtml(r.held[0].p) + ')에도 겁먹고 팔지 않고 버텼어요.');
+            if (r.avgTop <= 0.5 && r.avgCount >= 3) good.push('🧺 여러 바구니에 나눠 담았어요. 한 곳이 무너져도 전체가 덜 흔들려요.');
+            if (!r.usedLoan && r.avgRisk >= 0.2 && good.length < 2) good.push('🧭 빚 없이 내 돈으로만 투자했어요.');
+            if (r.panic.length) { const e = r.panic[0]; think.push('😱 폭락 직후(' + escHtml(e.p) + ')에 주식을 절반 넘게 팔았어요. 무서웠을 거예요!' + (e.after !== null ? ' 그 다음 분기 주식 평균은 ' + pctTxt(e.after) + '였어요.' : '') + ' 팔기 전에 "왜 떨어졌지?"를 먼저 따져 봤나요?'); }
+            if (r.chase.length) { const c = r.chase[0]; think.push('🏃 크게(30% 넘게) 오른 바로 다음에 산 적이 ' + r.chase.length + '번 있어요 (예: ' + escHtml(c.n) + ', ' + escHtml(c.p) + '). 이미 오른 뒤에 살 때, 더 오를 근거는 무엇이었나요?'); }
+            if (r.usedLoan) think.push('💳 대출을 써서 투자했어요' + (r.loanInterest > 0 ? ' (이자로 모두 ' + r.loanInterest.toLocaleString() + '만 원)' : '') + '. 빚은 이익도 손실도 더 크게 만들어요.');
+            if (r.conc) think.push('🎯 ' + escHtml(r.conc.p) + '에는 자산의 ' + Math.round(r.conc.topW * 100) + '%를 ' + escHtml(r.conc.top) + ' 한 곳에 담았어요. 그곳이 30% 떨어지면 총자산이 약 ' + Math.round(r.conc.topV * 0.3).toLocaleString() + '만 원 줄어드는 셈이에요.');
+            if (r.avgRisk < 0.1) think.push('🏦 거의 현금·예금으로만 지켰어요. 잃을 걱정은 적지만, 물가나 환율이 크게 오르면 내 돈의 힘은 어떻게 될까요?');
+            const out = good.slice(0, 2).concat(think.slice(0, 2));
+            if (!out.length) out.push('🙂 크게 쏠리거나 급하게 사고판 흔적은 없었어요. 다음엔 분기마다 "왜 샀는지" 한 줄씩 일지에 남겨 볼까요?');
+            return out;
+        }
         function openReview() {
             SFX.click();
             const final = netFloor(); const s = netSeries();
@@ -3644,6 +3760,8 @@
             const rate = ((final - initialCash) / initialCash * 100);
             const cls = (v) => (v >= 0 ? 'rv-up' : 'rv-down'); const sg = (v) => (v > 0 ? '+' : '');
             const card = (k, v, c) => '<div class="rv-card"><div class="rv-k">' + k + '</div><div class="rv-v ' + (c || '') + '">' + v + '</div></div>';
+            let rs = null; try { rs = riskStats(); } catch (e) { console.warn('위험 계산 오류:', e); }
+            const evenFinal = rs && rs.evenSeries.length ? rs.evenSeries[rs.evenSeries.length - 1] : null;
 
             let html = '<div class="rv-summary">'
                 + card('최종 자산', final.toLocaleString() + '만 원')
@@ -3651,6 +3769,7 @@
                 + card('투자로 번 돈', sg(invest) + invest.toLocaleString() + '만 원', cls(invest))
                 + card('카드·이벤트로 얻은 돈', sg(luck) + luck.toLocaleString() + '만 원', cls(luck))
                 + card('예금만 했다면', bankFinal.toLocaleString() + '만 원')
+                + (evenFinal !== null ? card('골고루 나눴다면', evenFinal.toLocaleString() + '만 원') : '')
                 + '</div>';
             html += '<h3>📈 내 자산은 이렇게 움직였어요</h3><div style="height:260px;background:#0b0c10;border-radius:8px;padding:10px;"><canvas id="reviewChart"></canvas></div>';
 
@@ -3664,7 +3783,31 @@
                 const brk = eventLog.filter(e => e.k === 'broker')[0];
                 if (brk) html += '<br>어둠의 브로커: ' + (brk.refused ? '거절했습니다. (성공 확률 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%짜리 내기였어요)' : (brk.win ? '수락해서 +' + (brk.stake * 2) + '만 원 (운이 좋았어요. 성공 확률은 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%)' : '수락해서 -' + brk.stake + '만 원 (성공 확률은 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%였어요)'));
                 html += '</div>';
+            }
 
+            // 🛡️ 위험 돌아보기: 얼마나 깊이 빠졌나(최대 낙폭) · 얼마나 쏠렸나(가장 큰 한 곳) · 습관
+            if (rs && rs.ok) {
+                const dd = (m) => Math.round(m.pct) + '%';
+                html += '<h3>🛡️ 위험 돌아보기</h3><div class="rv-summary">'
+                    + card('내 최대 낙폭', rs.my.pct < 0 ? dd(rs.my) : '없음', rs.my.pct < 0 ? 'rv-down' : '')
+                    + (rs.market.pct < 0 ? card('주식 평균 최대 낙폭', dd(rs.market), 'rv-down') : '')
+                    + card('가장 큰 한 곳에 평균', Math.round(rs.avgTop * 100) + '%')
+                    + '</div><div class="rv-note" style="margin-top:10px;">';
+                if (rs.my.pct < 0) {
+                    const back = (1 / (1 + rs.my.pct / 100) - 1) * 100;
+                    html += '📉 <b>최대 낙폭</b>: ' + escHtml(rs.my.from) + ' → ' + escHtml(rs.my.to) + ' 사이에 가장 높았던 때보다 <b>' + Math.round(-rs.my.pct) + '%</b> 줄었어요.'
+                        + (back < 1000 ? ' (여기서 본전이 되려면 +' + Math.round(back) + '%가 필요해요. 잃은 만큼보다 더 많이 벌어야 회복돼요!)' : '') + '<br>';
+                } else html += '📉 <b>최대 낙폭</b>: 한 번도 가장 높았던 때보다 줄어든 적이 없어요!<br>';
+                html += '　같은 기간 비교 — 주식 종목들을 똑같이 나눠 사서 들고만 있었다면 ' + (rs.market.pct < 0 ? dd(rs.market) : '낙폭 없음')
+                    + ', 예금·달러·금·주식에 1/4씩 나눠 두었다면 ' + (rs.even.pct < 0 ? dd(rs.even) : '낙폭 없음')
+                    + (evenFinal !== null ? ' (최종 ' + evenFinal.toLocaleString() + '만 원, 나보다 ' + Math.abs(final - evenFinal).toLocaleString() + '만 원 ' + (final >= evenFinal ? '적어요' : '많아요') + ')' : '') + '<br>';
+                html += '🧺 <b>분산</b>: 가장 큰 한 곳에 평균 <b>' + Math.round(rs.avgTop * 100) + '%</b> — ' + spreadLabel(rs.avgTop, rs.mainTop) + (rs.mainTop ? ' (주로 ' + escHtml(rs.mainTop) + ')' : '') + '<br>';
+                html += riskDiagnosis(rs).join('<br>') + '</div>';
+            } else if (rs) {
+                html += '<h3>🛡️ 위험 돌아보기</h3><div class="rv-note">참여한 분기가 짧아서 낙폭·분산 분석은 건너뛰었어요. (분기 기록이 2개 이상 쌓이면 보여요)</div>';
+            }
+
+            if (turnHistory.length) {
                 html += '<h3>🗓️ 분기별 기록</h3><table class="rv-table"><thead><tr><th>분기</th><th>그 분기에 들고 있던 것</th><th>결과</th><th>분기 끝 자산</th></tr></thead><tbody>';
                 turnHistory.forEach(h => { const d = h.n1 - h.n0; html += '<tr><td>' + escHtml(h.p) + '</td><td>' + allocText(h.a) + '</td><td class="' + cls(d) + '">' + sg(d) + d + '만 원</td><td>' + h.n1.toLocaleString() + '만 원</td></tr>'; });
                 html += '</tbody></table>';
@@ -3688,6 +3831,7 @@
                 { label: '내 자산', data: s.mine, borderColor: '#66fcf1', backgroundColor: 'rgba(102,252,241,0.12)', borderWidth: 3, pointRadius: 3, fill: true, tension: 0.2 },
                 { label: '예금만 했다면', data: pad(bank), borderColor: '#a4b0be', borderDash: [6, 4], borderWidth: 2, pointRadius: 0 }
             ];
+            if (rs && rs.evenSeries.length) sets.push({ label: '골고루 나눴다면', data: pad(rs.evenSeries), borderColor: '#a98bfa', borderDash: [8, 3], borderWidth: 2, pointRadius: 0 });
             if (bestSeries) sets.push({ label: best.name.replace('📈 ', '') + '만 들고 있었다면', data: pad(bestSeries), borderColor: '#ffd700', borderDash: [2, 3], borderWidth: 2, pointRadius: 0 });
             _reviewChart = lineChart('reviewChart', s.labels, sets);
         }
