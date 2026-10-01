@@ -88,7 +88,12 @@
         .predict-box .pb-btns button { padding: 4px 8px; font-size: 0.8em; border-radius: 7px; border: 1px solid rgba(169,139,250,0.45); background: transparent; color: #e6e1ff; cursor: pointer; white-space: nowrap; }
         .predict-box .pb-btns button.on { background: #a98bfa; color: #120c26; font-weight: 700; border-color: #a98bfa; }
         .predict-box.locked .pb-btns button:not(.on) { opacity: 0.4; cursor: default; }
-        .rv-predict { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(169,139,250,0.10); border: 1px solid rgba(169,139,250,0.35); font-size: 0.92em; line-height: 1.5; }
+        .t-votes { margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.14); font-size: 0.9em; }
+        .t-votes .tv-head { margin-bottom: 6px; }
+        .t-votes .tv-note { margin-left: 8px; font-size: 0.85em; color: #a4b0be; }
+        .t-votes .tv-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+        .t-votes .tv-pills span { padding: 3px 10px; border-radius: 999px; background: rgba(169,139,250,0.12); border: 1px solid rgba(169,139,250,0.35); }
+        .rv-predict { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(169,139,250,0.10); border: 1px solid rgba(169,139,250,0.35); font-size: 0.92em; line-height: 1.6; display: flex; flex-direction: column; gap: 4px; }
         .lp-btns button { flex: 1; padding: 9px; font-size: 0.95em; font-weight: bold; background: #1f2833; color: #66fcf1; border: 1px solid #45a29e; border-radius: 5px; }
         .hdr-btn { padding: 3px 10px; font-size: 0.6em; border-width: 1px; border-radius: 14px; line-height: 1.3; white-space: nowrap; }
         #roomBadge { display: none; font-size: 0.72em; color: #0b0c10; background: #66fcf1; border-radius: 12px; padding: 2px 10px; font-weight: 900; letter-spacing: 0.05em; }
@@ -264,6 +269,12 @@
         #gachaResultText { font-size: 1.4em; font-weight: 900; padding: 12px 30px; border-radius: 8px; margin-bottom: 14px; }
         #gachaCloseBtn { padding: 12px 40px; font-size: 1.1em; font-weight: 900; border-radius: 8px; border: 2px solid #ffd700; background: transparent; color: #ffd700; cursor: pointer; transition: 0.2s; }
         #gachaCloseBtn:hover { background: #ffd700; color: #000; }
+        /* 뽑은 카드의 글은 작은 카드 안이 아니라 넓은 읽기 칸에 (가독성) */
+        #gachaReadBox { display: none; max-width: 640px; margin: 0 auto 18px; text-align: left; font-size: 1.05em; line-height: 1.8; padding: 16px 20px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); color: #e8edf2; word-break: keep-all; }
+        #gachaReadBox .gr-think { margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.2); color: #9ff3ea; font-weight: 600; }
+        #gachaOverlay.reading .gacha-cards { transform: scale(0.72); margin: -46px 0 -30px; }
+        #gachaOverlay.reading .gacha-subtitle { display: none; }
+        #gachaOverlay.reading .cf-desc { display: none; }
 
         #confettiCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9001; display: none; }
         #dudEffect { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9001; background: rgba(100,0,0,0); }
@@ -594,7 +605,10 @@
         .rv-table th { position: static; background: #0b0c10; }
         .rv-table tr:hover td { background: transparent; color: inherit; }
         .rv-up { color: #ff6b6b; font-weight: bold; } .rv-down { color: #6ba0ff; font-weight: bold; }
-        .rv-note { background: #0b0c10; border-left: 3px solid #ffd700; border-radius: 6px; padding: 10px 14px; line-height: 1.7; font-size: 0.95em; }
+        .rv-note { background: #0b0c10; border-left: 3px solid #ffd700; border-radius: 6px; padding: 12px 16px; line-height: 1.8; font-size: 0.97em; word-break: keep-all; }
+        .rv-list { list-style: none; margin: 0; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; background: #0b0c10; border-left: 3px solid #ffd700; border-radius: 6px; line-height: 1.6; font-size: 0.97em; word-break: keep-all; }
+        .rv-list li { margin: 0; }
+        .rv-sub { display: block; margin-top: 3px; font-size: 0.88em; color: #9aa4b2; }
 
         /* ══════════════════════════════════════════
            🎨 깔끔한 테마 — 배치·기능은 그대로, 색·선·모서리·글꼴만 정돈
@@ -608,7 +622,10 @@
             font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif;
             background: var(--bg) radial-gradient(1200px 700px at 50% -10%, #13202e 0%, var(--bg) 60%) no-repeat;
             color: var(--text); letter-spacing: -0.01em;
+            word-break: keep-all; overflow-wrap: break-word;   /* 한글을 낱말 단위로 줄바꿈 (가독성) */
         }
+        /* 설명 글이 들어가는 창은 줄 간격을 넉넉하게 */
+        .theme-clean .guide-step p, .theme-clean .guide-step div, .theme-clean #tutBubble .tb-text, .theme-clean .bn-sub, .theme-clean #reportContent { line-height: 1.7; }
         .theme-clean #displayCash, .theme-clean #totalNetWorth, .theme-clean .asset-balance strong, .theme-clean td strong,
         .theme-clean #rateBank, .theme-clean #rateDollar, .theme-clean #rateGold, .theme-clean .trade-box input { font-variant-numeric: tabular-nums; }
 
@@ -705,6 +722,7 @@
         .theme-clean .stock-item:hover .stock-desc, .theme-clean .stock-item.active .stock-desc { color: var(--muted); }
         .halt-tag { display: inline-block; width: fit-content; align-self: flex-start; flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 6px; font-size: 0.68em; font-weight: 700; color: #fff; background: #8a2b2b; vertical-align: middle; }
         .stock-item.halted { opacity: 0.75; }
+        #stockDescLine { font-size: 0.92em; line-height: 1.6; color: #b9c2cc; margin: 4px 0 6px; word-break: keep-all; }
         #haltNotice { margin: 6px 0 0; padding: 7px 10px; border-radius: 8px; background: rgba(255,93,93,0.12); border: 1px solid rgba(255,93,93,0.4); color: #ffb3b3; font-size: 0.9em; }
         #stockModal .btn-buy.is-halted, #stockModal .btn-sell.is-halted { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.8); }
         .theme-clean .chart-area { border-radius: 12px; }
@@ -717,6 +735,8 @@
         .theme-clean #turnReportModal .card-content h2 { text-shadow: none !important; color: var(--violet) !important; letter-spacing: -0.02em; }
         .theme-clean #turnReportModal .card-content button { background: var(--violet) !important; color: #1a1030 !important; border: none !important; border-radius: 12px; }
         .theme-clean .ts-card, .theme-clean .guide-step, .theme-clean .rv-card, .theme-clean .rv-note { background: var(--surface2); border-color: var(--line); border-radius: 12px; }
+        .theme-clean .rv-list { background: var(--surface2); border-left: none; border: 1px solid var(--line); border-radius: 12px; }
+        .theme-clean .rv-sub { color: var(--muted); }
 
         /* 랭킹 */
         .theme-clean .ranking-board { background: var(--surface); border: 1px solid var(--line2); box-shadow: 0 18px 50px rgba(0,0,0,0.45); border-radius: 18px; }
@@ -1026,7 +1046,7 @@
                     <div class="name-chips" id="notReadyList"><span style="color:#a4b0be;">없음</span></div>
                     <div style="color:#aaffbb; font-size:0.85em; margin-top:8px;">준비한 학생</div>
                     <div class="name-chips" id="readyStudentList"><span style="color:#a4b0be;">없음</span></div>
-                    <div id="teacherVotes" style="margin-top:8px; font-size:0.9em;"></div>
+                    <div id="teacherVotes" class="t-votes"></div>
                 </div>
                 <div style="text-align:right; margin-left:12px;">
                     <button id="btnBroadcastReady" onclick="teacherBroadcastUnlock()">🔓 전체 잠금 해제</button>
@@ -1040,7 +1060,7 @@
                 <button onclick="openClassReview()" style="flex:2; padding:14px 0; font-size:1em; font-weight:900; background:#2d2000; color:#ffd700; border:2px solid #ffd700; border-radius:10px; cursor:pointer;">📊 학급 복기</button>
                 <button onclick="teacherResetAllData()" style="flex:1; padding:14px 0; font-size:0.95em; font-weight:900; background:#3a0a0a; color:#ff6b6b; border:2px solid #cc3333; border-radius:10px; cursor:pointer;">🗑️ 리셋</button>
             </div>
-            <div style="color:#a4b0be; font-size:0.8em; margin-top:6px;">💡 <strong style="color:#66fcf1;">다음 분기로</strong>를 누르면 학생 화면의 거래가 잠기고 8초 뒤 모두 함께 넘어갑니다. 마지막 분기에서는 최종 결과 발표를 묻습니다.</div>
+            <div style="color:#a4b0be; font-size:0.85em; line-height:1.6; margin-top:10px;">💡 <strong style="color:#66fcf1;">다음 분기로</strong>: 학생 거래를 잠그고 8초 뒤 모두 함께 넘어갑니다.</div>
 
             <!-- 🛠️ 강제 턴넘김 -->
             <div style="margin-top:14px; background:#0d1a0d; border:2px solid #44aa22; border-radius:10px; padding:12px 16px;">
@@ -1104,6 +1124,7 @@
         <div class="gacha-cards" id="gachaCards"></div>
         <div id="gachaResultBox">
             <div id="gachaResultText"></div>
+            <div id="gachaReadBox"></div>
             <button id="gachaCloseBtn" onclick="closeGacha()">확인 완료 ✓</button>
         </div>
     </div>
@@ -1583,7 +1604,8 @@
             $id('teacherReadyBadge').innerText = players.length ? '(' + ready.length + '/' + players.length + ')' : '';
             {   // 🔮 이번 분기 반 예측 (교사 화면에만 — 토론 거리)
                 const el = $id('teacherVotes'); const t = curTurnNum(); const v = st.votes && st.votes[t];
-                if (el) el.innerHTML = '🔮 이번 분기 예측 (' + escHtml(predictAssetOf(t).icon + ' ' + predictAssetOf(t).label) + '): ' + (v && v.n ? '▲ ' + v.u + '명 · ― ' + v.f + '명 · ▼ ' + v.d + '명 · 🤷 ' + v.i + '명' : '아직 없음') + ' <span style="color:#a4b0be;">(학생 화면에는 분기가 끝난 뒤에만 보여요)</span>';
+                if (el) el.innerHTML = '<div class="tv-head">🔮 이번 분기 예측 — ' + escHtml(predictAssetOf(t).icon + ' ' + predictAssetOf(t).label) + '<span class="tv-note">학생에게는 분기가 끝난 뒤에 보여요</span></div>'
+                    + (v && v.n ? '<div class="tv-pills"><span>▲ 오른다 <b>' + v.u + '</b></span><span>― 비슷 <b>' + v.f + '</b></span><span>▼ 내린다 <b>' + v.d + '</b></span><span>🤷 모르겠다 <b>' + v.i + '</b></span></div>' : '<div class="tv-pills"><span>아직 아무도 예측하지 않았어요</span></div>');
             }
             const btn = $id('btnReady');
             if (btn && isTeacher && !_teacherBusy) btn.innerText = teacherBtnLabel();
@@ -3067,11 +3089,19 @@
                 if (card.type==='reward')      { rt.innerText='🎉 ' + card.title + ' 획득!'; rt.style.background='linear-gradient(135deg,#2d1f00,#3d2900)'; rt.style.color='#ffd700'; rt.style.border='2px solid #ffd700'; launchConfetti(); }
                 else if (card.type==='info')   { rt.innerText='📋 ' + card.title + ' 획득!' + (card.amount > 0 ? ' (보너스 +' + card.amount + '만 원)' : ''); rt.style.background='linear-gradient(135deg,#001a1a,#001f1f)'; rt.style.color='#66fcf1'; rt.style.border='2px solid #66fcf1'; }
                 else                            { rt.innerText='💀 꽝! ' + card.title;   rt.style.background='linear-gradient(135deg,#1a0000,#200000)'; rt.style.color='#ff4b4b'; rt.style.border='2px solid #ff4b4b'; launchDudEffect(); }
+                // 카드 글을 넓은 칸에 — 판단 근거와 '생각해 볼 것'을 나눠서
+                const rd = $id('gachaReadBox'), desc = String(card.desc || '').trim();
+                if (rd && desc) {
+                    const k = desc.indexOf('→');
+                    const main = (k > 0 ? desc.slice(0, k) : desc).trim(), think = k > 0 ? desc.slice(k).trim() : '';
+                    rd.innerHTML = '<div>' + escHtml(main).replace(/\n+/g, '<br>') + '</div>' + (think ? '<div class="gr-think">' + escHtml(think).replace(/\n+/g, '<br>') + '</div>' : '');
+                    rd.style.display = 'block'; $id('gachaOverlay').classList.add('reading');
+                }
                 refreshCardButton();
                 updateUI();
             }, 800);
         }
-        function closeGacha() { $id('gachaOverlay').classList.remove('active'); stopConfetti(); }
+        function closeGacha() { $id('gachaOverlay').classList.remove('active', 'reading'); const rd = $id('gachaReadBox'); if (rd) { rd.style.display = 'none'; rd.innerHTML = ''; } stopConfetti(); }
 
         // ── confetti ──
         let _confettiAnim=null; let _confettiParticles=[];
@@ -3171,14 +3201,14 @@
             const a = predictAssetOf(t), pct = predictActual(idx, a.k); if (pct === null) return '';
             const real = predictClass(pct), mine = predictions[t];
             const arrow = (c) => ({ u: '▲', f: '―', d: '▼' })[c];
-            let h = '🔮 <b>' + a.icon + ' ' + a.label + '</b> 실제: ' + arrow(real) + ' ' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
-            if (mine) h += ' · 내 예측: ' + PREDICT_TEXT[mine] + (mine === 'i' ? '' : mine === real ? ' <b style="color:#3ddc84;">맞았어요!</b>' : ' <span style="color:#ff9a9a;">빗나갔어요</span>');
-            else h += ' · 이번엔 예측하지 않았어요';
+            let h = '<div>🔮 <b>' + a.icon + ' ' + a.label + '</b> 실제 ' + arrow(real) + ' ' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%</div>';
+            if (mine) h += '<div>내 예측: ' + PREDICT_TEXT[mine] + (mine === 'i' ? '' : mine === real ? ' — <b style="color:#3ddc84;">맞았어요!</b>' : ' — <span style="color:#ff9a9a;">빗나갔어요</span>') + '</div>';
+            else h += '<div style="color:#a4b0be;">이번엔 예측하지 않았어요</div>';
             const v = _classVotes && _classVotes[t];
             if (v && v.n) {
                 const pc = (k) => Math.round(v[k] / v.n * 100);
                 const hit = real === 'u' ? v.u : real === 'd' ? v.d : v.f;
-                h += '<br><span style="color:#a4b0be;">우리 반 ' + v.n + '명: ▲ ' + pc('u') + '% · ― ' + pc('f') + '% · ▼ ' + pc('d') + '% · 🤷 ' + pc('i') + '% — 맞힌 친구 ' + hit + '명</span>';
+                h += '<div style="color:#a4b0be; font-size:0.92em;">우리 반 ' + v.n + '명: ▲ ' + pc('u') + '% · ― ' + pc('f') + '% · ▼ ' + pc('d') + '% · 🤷 ' + pc('i') + '% (맞힌 친구 ' + hit + '명)</div>';
             }
             return h;
         }
@@ -3897,33 +3927,37 @@
             if (turnHistory.length) {
                 const sorted = turnHistory.slice().sort((a, b) => (b.n1 - b.n0) - (a.n1 - a.n0));
                 const top = sorted[0], low = sorted[sorted.length - 1];
-                html += '<h3>🔍 돌아보기</h3><div class="rv-note">';
-                html += '가장 많이 번 분기는 <b>' + escHtml(top.p) + '</b> (' + sg(top.n1 - top.n0) + (top.n1 - top.n0) + '만 원) — 그때 들고 있던 것: ' + allocText(top.a) + '<br>';
-                if (low !== top) html += '가장 아팠던 분기는 <b>' + escHtml(low.p) + '</b> (' + sg(low.n1 - low.n0) + (low.n1 - low.n0) + '만 원) — 그때 들고 있던 것: ' + allocText(low.a) + '<br>';
-                html += (final >= bankFinal ? '예금만 했을 때보다 <b>' + (final - bankFinal).toLocaleString() + '만 원 더</b> 벌었습니다.' : '예금만 했을 때보다 <b>' + (bankFinal - final).toLocaleString() + '만 원 덜</b> 벌었습니다. 위험을 진 만큼 보상을 받지 못한 셈이에요.');
+                const li = (main, sub) => '<li>' + main + (sub ? '<span class="rv-sub">' + sub + '</span>' : '') + '</li>';
+                html += '<h3>🔍 돌아보기</h3><ul class="rv-list">';
+                html += li('📈 가장 많이 번 분기: <b>' + escHtml(top.p) + '</b> ' + sg(top.n1 - top.n0) + (top.n1 - top.n0) + '만 원', '그때 들고 있던 것 — ' + allocText(top.a));
+                if (low !== top) html += li('📉 가장 아팠던 분기: <b>' + escHtml(low.p) + '</b> ' + sg(low.n1 - low.n0) + (low.n1 - low.n0) + '만 원', '그때 들고 있던 것 — ' + allocText(low.a));
+                html += final >= bankFinal ? li('🏦 예금만 했을 때보다 <b>' + (final - bankFinal).toLocaleString() + '만 원 더</b> 벌었어요.') : li('🏦 예금만 했을 때보다 <b>' + (bankFinal - final).toLocaleString() + '만 원 덜</b> 벌었어요.', '위험을 진 만큼 보상을 받지 못한 셈이에요.');
                 const brk = eventLog.filter(e => e.k === 'broker')[0];
-                if (brk) html += '<br>어둠의 브로커: ' + (brk.refused ? '거절했습니다. (성공 확률 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%짜리 내기였어요)' : (brk.win ? '수락해서 +' + (brk.stake * 2) + '만 원 (운이 좋았어요. 성공 확률은 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%)' : '수락해서 -' + brk.stake + '만 원 (성공 확률은 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%였어요)'));
-                html += '</div>';
+                if (brk) html += li('💀 어둠의 브로커: ' + (brk.refused ? '거절했어요.' : (brk.win ? '수락해서 <b>+' + (brk.stake * 2) + '만 원</b>' : '수락해서 <b>-' + brk.stake + '만 원</b>')), '성공 확률 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%짜리 내기였어요.' + (brk.win && !brk.refused ? ' 운이 좋았어요.' : ''));
+                html += '</ul>';
             }
 
             // 🛡️ 위험 돌아보기: 얼마나 깊이 빠졌나(최대 낙폭) · 얼마나 쏠렸나(가장 큰 한 곳) · 습관
             if (rs && rs.ok) {
                 const dd = (m) => Math.round(m.pct) + '%';
+                const li = (main, sub) => '<li>' + main + (sub ? '<span class="rv-sub">' + sub + '</span>' : '') + '</li>';
                 html += '<h3>🛡️ 위험 돌아보기</h3><div class="rv-summary">'
                     + card('내 최대 낙폭', rs.my.pct < 0 ? dd(rs.my) : '없음', rs.my.pct < 0 ? 'rv-down' : '')
                     + (rs.market.pct < 0 ? card('주식 평균 최대 낙폭', dd(rs.market), 'rv-down') : '')
                     + card('가장 큰 한 곳에 평균', Math.round(rs.avgTop * 100) + '%')
-                    + '</div><div class="rv-note" style="margin-top:10px;">';
+                    + '</div><ul class="rv-list" style="margin-top:10px;">';
                 if (rs.my.pct < 0) {
                     const back = (1 / (1 + rs.my.pct / 100) - 1) * 100;
-                    html += '📉 <b>최대 낙폭</b>: ' + escHtml(rs.my.from) + ' → ' + escHtml(rs.my.to) + ' 사이에 가장 높았던 때보다 <b>' + Math.round(-rs.my.pct) + '%</b> 줄었어요.'
-                        + (back < 1000 ? ' (여기서 본전이 되려면 +' + Math.round(back) + '%가 필요해요. 잃은 만큼보다 더 많이 벌어야 회복돼요!)' : '') + '<br>';
-                } else html += '📉 <b>최대 낙폭</b>: 한 번도 가장 높았던 때보다 줄어든 적이 없어요!<br>';
-                html += '　같은 기간 비교 — 주식 종목들을 똑같이 나눠 사서 들고만 있었다면 ' + (rs.market.pct < 0 ? dd(rs.market) : '낙폭 없음')
-                    + ', 예금·달러·금·주식에 1/4씩 나눠 두었다면 ' + (rs.even.pct < 0 ? dd(rs.even) : '낙폭 없음')
-                    + (evenFinal !== null ? ' (최종 ' + evenFinal.toLocaleString() + '만 원, 나보다 ' + Math.abs(final - evenFinal).toLocaleString() + '만 원 ' + (final >= evenFinal ? '적어요' : '많아요') + ')' : '') + '<br>';
-                html += '🧺 <b>분산</b>: 가장 큰 한 곳에 평균 <b>' + Math.round(rs.avgTop * 100) + '%</b> — ' + spreadLabel(rs.avgTop, rs.mainTop) + (rs.mainTop ? ' (주로 ' + escHtml(rs.mainTop) + ')' : '') + '<br>';
-                html += riskDiagnosis(rs).join('<br>') + '</div>';
+                    html += li('📉 <b>최대 낙폭 ' + Math.round(rs.my.pct) + '%</b> (' + escHtml(rs.my.from) + ' → ' + escHtml(rs.my.to) + ')',
+                        back < 1000 ? '여기서 본전이 되려면 +' + Math.round(back) + '%가 필요해요. 잃은 만큼보다 더 벌어야 회복돼요.' : '');
+                } else html += li('📉 <b>최대 낙폭 없음</b> — 한 번도 가장 높았던 때보다 줄어든 적이 없어요!');
+                html += li('⚖️ 같은 기간, 다른 방법이었다면',
+                    '주식 골고루 사서 들고만 있기: ' + (rs.market.pct < 0 ? dd(rs.market) : '낙폭 없음')
+                    + ' · 예금·달러·금·주식에 1/4씩: ' + (rs.even.pct < 0 ? dd(rs.even) : '낙폭 없음')
+                    + (evenFinal !== null ? ' (끝 ' + evenFinal.toLocaleString() + '만 원 — 나보다 ' + Math.abs(final - evenFinal).toLocaleString() + '만 원 ' + (final >= evenFinal ? '적어요' : '많아요') + ')' : ''));
+                html += li('🧺 <b>분산</b>: 가장 큰 한 곳에 평균 <b>' + Math.round(rs.avgTop * 100) + '%</b>', spreadLabel(rs.avgTop, rs.mainTop) + (rs.mainTop ? ' (주로 ' + escHtml(rs.mainTop) + ')' : ''));
+                riskDiagnosis(rs).forEach(line => { html += li(line); });
+                html += '</ul>';
             } else if (rs) {
                 html += '<h3>🛡️ 위험 돌아보기</h3><div class="rv-note">참여한 분기가 짧아서 낙폭·분산 분석은 건너뛰었어요. (분기 기록이 2개 이상 쌓이면 보여요)</div>';
             }
@@ -3945,10 +3979,10 @@
                 const ts = Object.keys(predictions).map(Number).filter(t => t >= 1).sort((a, b) => a - b);
                 let n = 0, hit = 0, idk = 0;
                 ts.forEach(t => { const idx = allData.findIndex(d => parseInt(d['턴']) === t); const pct = idx >= 0 ? predictActual(idx, predictAssetOf(t).k) : null; if (pct === null) return; if (predictions[t] === 'i') { idk++; return; } n++; if (predictions[t] === predictClass(pct)) hit++; });
-                if (n + idk > 0) html += '<h3>🔮 분기 예측 돌아보기</h3><div class="rv-note">' + (n ? n + '번 예측해서 <b>' + hit + '번</b> 맞혔어요 (' + Math.round(hit / n * 100) + '%).' : '') + (idk ? ' \'모르겠다\'를 ' + idk + '번 골랐어요.' : '') + '<br>세 가지(오른다·비슷·내린다) 중 하나를 그냥 고르면 3번에 1번쯤 맞아요. 나는 그보다 잘 맞혔나요? 미래를 맞히기 어렵다면, 어떻게 투자하는 게 안전할까요?</div>';
+                if (n + idk > 0) html += '<h3>🔮 분기 예측 돌아보기</h3><ul class="rv-list"><li>' + (n ? n + '번 예측해서 <b>' + hit + '번 맞혔어요</b> (' + Math.round(hit / n * 100) + '%)' : '예측 대신') + (idk ? (n ? ' · ' : ' ') + '\'모르겠다\' ' + idk + '번' : '') + '<span class="rv-sub">그냥 골라도 3번에 1번은 맞아요. 나는 그보다 잘 맞혔나요?</span></li><li>미래를 맞히기 어렵다면, 어떻게 투자하는 게 안전할까요?</li></ul>';
             }
             if (HISTORY_NOTES[selectedStage]) html += '<h3>📚 실제 역사에서는</h3><div class="rv-note">' + HISTORY_NOTES[selectedStage] + '</div>';
-            html += '<div class="rv-note" style="margin-top:14px;border-left-color:#66fcf1;">💬 생각해 보기: 위기가 왔을 때 나는 어떻게 움직였나요? 다시 한다면 무엇을 다르게 할까요?</div>';
+            html += '<h3>💬 생각해 보기</h3><ul class="rv-list" style="border-left-color:#66fcf1;"><li>위기가 왔을 때 나는 어떻게 움직였나요?</li><li>다시 한다면 무엇을 다르게 할까요?</li></ul>';
 
             $id('reviewContent').innerHTML = html;
             $id('reviewModal').classList.add('active');
@@ -4014,22 +4048,24 @@
                 + card('예금만 한 것보다 잘한 학생', beatBank + '명') + card('원금보다 줄어든 학생', lost + '명') + '</div>';
             html += '<h3>🧭 분기마다 반 전체가 들고 있던 것 (평균 비중 %)</h3><div style="height:250px;background:#0b0c10;border-radius:8px;padding:10px;"><canvas id="crAlloc"></canvas></div>';
             html += '<h3>📉 분기별 반 평균 수익률</h3><div style="height:190px;background:#0b0c10;border-radius:8px;padding:10px;"><canvas id="crRet"></canvas></div>';
-            html += '<h3>🔍 짚어 볼 점</h3><div class="rv-note">';
+            const li = (main, sub) => '<li>' + main + (sub ? '<span class="rv-sub">' + sub + '</span>' : '') + '</li>';
+            html += '<h3>🔍 짚어 볼 점</h3><ul class="rv-list">';
             if (worst >= 0) {
                 const wi = worst, sBefore = share(4)[wi], sAfter = wi + 1 < ts.length ? share(4)[wi + 1] : null;
-                html += '가장 크게 흔들린 분기는 <b>' + escHtml(labels[wi]) + '</b> (반 평균 ' + sg(retAvg[wi]) + '%). 그때 주식 비중 평균 ' + sBefore + '%' + (sAfter !== null ? ' → 다음 분기 ' + sAfter + '%' + (sAfter < sBefore ? ' (겁먹고 팔았나요?)' : sAfter > sBefore ? ' (싸졌을 때 더 샀나요?)' : '') : '') + '<br>';
+                html += li('📉 가장 크게 흔들린 분기: <b>' + escHtml(labels[wi]) + '</b> (반 평균 ' + sg(retAvg[wi]) + '%)',
+                    '그때 주식 비중 평균 ' + sBefore + '%' + (sAfter !== null ? ' → 다음 분기 ' + sAfter + '%' + (sAfter < sBefore ? ' — 겁먹고 팔았나요?' : sAfter > sBefore ? ' — 싸졌을 때 더 샀나요?' : '') : ''));
             }
-            if (bestQ >= 0) html += '가장 많이 오른 분기는 <b>' + escHtml(labels[bestQ]) + '</b> (반 평균 ' + sg(retAvg[bestQ]) + '%)<br>';
-            html += '처음부터 예금만 했다면 ' + bankFinal.toLocaleString() + '만 원 → 반의 ' + beatBank + '명이 이보다 잘했습니다.<br>';
-            html += '카드·이벤트로 얻은 돈은 평균 ' + sg(avgLuck) + '만 원 (투자 결과에 비하면 ' + (Math.abs(avgLuck) < Math.abs(avg - initialCash) / 3 ? '작은 편' : '큰 편') + ')';
-            if (brokerAsked) html += '<br>어둠의 브로커 제안을 받은 ' + brokerAsked + '명 중 ' + brokerTook + '명이 수락 (성공 확률 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%)';
-            html += '</div>';
+            if (bestQ >= 0) html += li('📈 가장 많이 오른 분기: <b>' + escHtml(labels[bestQ]) + '</b> (반 평균 ' + sg(retAvg[bestQ]) + '%)');
+            html += li('🏦 처음부터 예금만 했다면 ' + bankFinal.toLocaleString() + '만 원', '반의 ' + beatBank + '명이 이보다 잘했어요.');
+            html += li('🃏 카드·이벤트로 얻은 돈: 평균 ' + sg(avgLuck) + '만 원', '투자 결과에 비하면 ' + (Math.abs(avgLuck) < Math.abs(avg - initialCash) / 3 ? '작은 편이에요.' : '큰 편이에요.'));
+            if (brokerAsked) html += li('💀 어둠의 브로커: 제안받은 ' + brokerAsked + '명 중 ' + brokerTook + '명이 수락', '성공 확률 ' + Math.round(CFG.BROKER_WIN_PROB * 100) + '%짜리 내기였어요.');
+            html += '</ul>';
             html += '<h3>🏆 상위·하위 학생의 투자 방식 (평균 비중)</h3><table class="rv-table"><thead><tr><th>이름</th><th>최종 자산</th><th>주로 들고 있던 것</th></tr></thead><tbody>';
             const show = best.length > 6 ? best.slice(0, 3).concat(best.slice(-3)) : best;
             show.forEach((p, i) => { if (best.length > 6 && i === 3) html += '<tr><td colspan="3" style="color:#a4b0be;">⋯</td></tr>'; html += '<tr><td>' + escHtml(p.name) + '</td><td>' + Math.floor(p.net).toLocaleString() + '만 원</td><td>' + styleOf(p) + '</td></tr>'; });
             html += '</tbody></table>';
             html += '<h3>📏 최종 자산 분포</h3><div style="height:180px;background:#0b0c10;border-radius:8px;padding:10px;"><canvas id="crDist"></canvas></div>';
-            html += '<div class="rv-note" style="margin-top:14px;border-left-color:#66fcf1;">💬 함께 이야기해 볼 질문<br>① 가장 크게 흔들린 분기에 우리는 왜 그렇게 움직였을까요?<br>② 1등 요원과 예금만 한 요원, 위험과 보상은 어떻게 달랐나요?<br>③ 실제 역사에서 이 위기를 겪은 사람들에게 무엇을 조언하고 싶나요?</div>';
+            html += '<h3>💬 함께 이야기해 볼 질문</h3><ul class="rv-list" style="border-left-color:#66fcf1;"><li>① 가장 크게 흔들린 분기에 우리는 왜 그렇게 움직였을까요?</li><li>② 1등 요원과 예금만 한 요원, 위험과 보상은 어떻게 달랐나요?</li><li>③ 실제 역사에서 이 위기를 겪은 사람들에게 무엇을 조언하고 싶나요?</li></ul>';
             box.innerHTML = html;
             _crCharts.forEach(c => { try { c.destroy(); } catch (e) {} }); _crCharts = [];
             const colors = ['#999999', '#007AFF', '#34C759', '#FFCC00', '#FF3B30']; const names = ['현금', '예금', '달러', '금', '주식'];
