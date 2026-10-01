@@ -4,10 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>경제 타임머신 V6.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- 깔끔한 테마용 글꼴 (어느 기기에서나 같은 한글 모양 — 크롬북에는 맑은 고딕이 없다) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <!-- 차트 도구(약 1.2MB)는 첫 화면을 막지 않게 뒤에서 받는다. 판을 고정해 두어 새 판이 나와도 깨지지 않고,
+         브라우저가 1년 동안 저장해 두므로 두 번째부터는 바로 뜬다. jsDelivr가 막히면 unpkg에서 다시 받는다. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <script>
+        window.__chartLibs = (function () {
+            function load(urls) {
+                return new Promise(function (resolve) {
+                    var i = 0;
+                    (function next() {
+                        if (i >= urls.length) return resolve(false);
+                        var s = document.createElement('script'); s.src = urls[i++]; s.async = false;
+                        s.onload = function () { resolve(true); };
+                        s.onerror = function () { if (s.parentNode) s.parentNode.removeChild(s); next(); };
+                        document.head.appendChild(s);
+                    })();
+                });
+            }
+            return Promise.all([
+                load(['https://cdn.jsdelivr.net/npm/apexcharts@7.6.1/dist/apexcharts.min.js', 'https://unpkg.com/apexcharts@7.6.1/dist/apexcharts.min.js']),
+                load(['https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js', 'https://unpkg.com/chart.js@4.5.1/dist/chart.umd.min.js'])
+            ]).then(function (r) { if (window.__onChartLibs) window.__onChartLibs(); return r[0] && r[1]; });
+        })();
+    </script>
+    <!-- 깔끔한 테마용 글꼴 (어느 기기에서나 같은 한글 모양 — 크롬북에는 맑은 고딕이 없다). 글꼴을 기다리느라 화면이 멈추지 않게 뒤에서 적용 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" media="print" onload="this.media='all'">
     
     <style>
         * { box-sizing: border-box; user-select: none; }
@@ -726,7 +747,7 @@
 
     <!-- 🎬 인트로 영상 전체화면 오버레이 -->
     <div id="introVideoOverlay">
-        <video id="introVideo" src="./intro.mp4" playsinline
+        <video id="introVideo" src="./intro.mp4" preload="none" playsinline
                style="width:100%;height:100%;object-fit:contain;background:#000;"></video>
         <button id="skipBtn" onclick="closeIntroVideo()">SKIP ▶▶</button>
         <div id="videoProgressBar"></div>
@@ -1483,9 +1504,16 @@
             $id('lockText').innerHTML = _closing ? '⏳ 곧 다음 분기로 넘어갑니다.<br>잠시만 기다려 주세요.' : '준비완료 상태입니다.<br>선생님의 안내를 기다려주세요.';
             $id('btnCancelReady').style.display = (_isReady && !_closing) ? '' : 'none';
         }
+        // 선생님이 넘기는 중(약 8초)에는 서버를 자주 확인해 다음 분기로 빨리 따라간다
+        let _fastPollTimer = null; let _closingAt = 0;
+        function setFastPoll(on) {
+            if (on && !_fastPollTimer && !isTeacher) _fastPollTimer = setInterval(pollOnce, 2500 + Math.floor(Math.random() * 1000));
+            if (!on && _fastPollTimer) { clearInterval(_fastPollTimer); _fastPollTimer = null; }
+        }
         function setClosing(v) {
             if (_closing === v) return;
-            _closing = v; _closingPolls = 0;
+            _closing = v; _closingPolls = 0; _closingAt = Date.now();
+            setFastPoll(v);
             if (v) { $id('stockModal').style.display = 'none'; toast('⏳ 선생님이 다음 분기로 넘기고 있어요. 거래가 잠깁니다.', 'warn', 3000); }
             refreshLockOverlay();
         }
@@ -1718,8 +1746,12 @@
             if (_pollTimer) clearInterval(_pollTimer);
             _pollTimer = setInterval(pollOnce, 5000 + Math.floor(Math.random() * 1500));   // 학생마다 조금씩 엇갈리게
         }
+        let _lastPollAt = 0;
         async function pollOnce() {
             if (_pollBusy || !stateKey || isTeacher || _suppressSave || _viewOnly) return;
+            // 다른 탭을 보고 있는 동안은 20초에 한 번만 (돌아오면 바로 확인 — 아래 visibilitychange)
+            if (document.hidden && Date.now() - _lastPollAt < 20000) return;
+            _lastPollAt = Date.now();
             _pollBusy = true;
             try {
                 const live = onScreen('game-screen') && !gameFinished;
@@ -1730,6 +1762,7 @@
             } catch (e) { if (++_pollFails >= 2) setNetBadge(false); if (_pollFails === 2) logEvent('offline', {}); }
             finally { _pollBusy = false; }
         }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && stateKey && !isTeacher) pollOnce(); });
         function handlePoll(d) {
             if (!d || !d.sig) return;
             const sig = d.sig;
@@ -1746,7 +1779,11 @@
                 if (sig.unlock && _isReady) { setReady(false, { local: true }); toast('🔓 선생님이 잠금을 해제했습니다!', 'ok'); }
                 if (!!sig.closing !== _closing) logEvent('closing', { v: !!sig.closing });
                 setClosing(!!sig.closing);
-            } else if (_closing && ++_closingPolls > 10) setClosing(false);   // 넘김이 끝내 오지 않으면(약 1분) 잠금을 푼다
+            } else if (_closing) {
+                const waited = Date.now() - _closingAt;
+                if (waited > 30000) setFastPoll(false);             // 빨리 확인하기는 30초까지만
+                if (waited > 60000) setClosing(false);              // 넘김이 끝내 오지 않으면(약 1분) 잠금을 푼다
+            }
             // 분기 이동은 '신호가 새로 왔는지'가 아니라 '내가 선생님보다 뒤에 있는지'로 판단한다
             // → 신호를 놓쳤거나 늦게 들어온 학생도 저절로 따라온다. 중간 랭킹 화면에 있어도 따라온다.
             const onMidRank = onScreen('ranking-screen') && !_rankingIsFinal;
@@ -1859,7 +1896,7 @@
             prevNetWorth = netAfter;
             if (netAfter < minNetWorth) minNetWorth = netAfter;
             if (pendingCard) pendingCard = null;     // 고르지 않고 넘긴 카드는 사라진다
-            if (_closing) { _closing = false; _closingPolls = 0; }
+            if (_closing) { _closing = false; _closingPolls = 0; setFastPoll(false); }
 
             const rec = {
                 t: parseInt(cur['턴']), p: String(cur['연도/분기'] || ''),
@@ -2263,9 +2300,12 @@
         }
 
         async function enterRoom(code, name, teacher) {
-            if (typeof ApexCharts === 'undefined' || typeof Chart === 'undefined')
+            // 방 정보는 차트 도구를 기다리는 동안 미리 요청해 둔다
+            const joinP = apiGet('action=join&code=' + encodeURIComponent(code) + '&playerName=' + encodeURIComponent(name));
+            joinP.catch(() => {});
+            if (!(await waitChartLibs(20000)))
                 throw userErr('차트 도구를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침(F5) 해주세요.');
-            const j = await apiGet('action=join&code=' + encodeURIComponent(code) + '&playerName=' + encodeURIComponent(name));
+            const j = await joinP;
             if (!j || !j.ok || !j.room) SS.del('etm_session');
             if (!j || !j.ok || !j.room) throw userErr('방 코드 ' + code + '번 방을 찾을 수 없어요. 코드를 다시 확인해주세요.');
             const room = j.room;
@@ -3739,12 +3779,25 @@
         window.addEventListener('resize', fitScreen);
         fitScreen();
         // 화면을 줄여(zoom) 보여 줄 때 Chart.js가 마우스 위치를 줄어든 만큼 작게 읽는다 → 되돌려 준다 (범례 클릭·툴팁)
-        if (typeof Chart !== 'undefined' && Chart.register) {
+        // 차트 도구는 뒤에서 받으므로, 받아진 뒤에 붙인다
+        let _zoomFixDone = false;
+        function registerZoomFix() {
+            if (_zoomFixDone || typeof Chart === 'undefined' || !Chart.register) return;
+            _zoomFixDone = true;
             Chart.register({ id: 'etmZoomFix', beforeEvent(chart, args) {
                 const z = parseFloat(document.body.style.zoom) || 1; const e = args && args.event;
                 // 마우스 이벤트는 offsetX(줄어든 좌표)를 그대로 쓰므로 그때만 나눈다 (터치는 Chart.js가 이미 맞게 계산)
                 if (z !== 1 && e && e.native && e.native.target === chart.canvas && typeof e.native.offsetX === 'number' && typeof e.x === 'number') { e.x = e.x / z; e.y = e.y / z; }
             } });
+        }
+        window.__onChartLibs = registerZoomFix;
+        registerZoomFix();
+        // 입장 때 차트 도구가 아직 오는 중이면 조금 기다린다 (최대 20초)
+        async function waitChartLibs(ms) {
+            const t0 = Date.now();
+            while ((typeof ApexCharts === 'undefined' || typeof Chart === 'undefined') && Date.now() - t0 < ms) await _sleep(200);
+            registerZoomFix();
+            return typeof ApexCharts !== 'undefined' && typeof Chart !== 'undefined';
         }
 
         // ══════════════════════════════════════════
