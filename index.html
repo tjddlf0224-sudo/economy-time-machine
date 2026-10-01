@@ -2300,6 +2300,15 @@
             });
         }
 
+        // 시나리오는 앞으로 나올 시세·뉴스가 네트워크 탭에 그대로 보이지 않게 섞여서 온다 (옛 서버면 그대로 온다)
+        function unscrambleScenario(d) {
+            if (!d || typeof d.enc !== 'string') return d;
+            const k = 'etm-time-machine-2026', bin = atob(d.enc), bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) ^ k.charCodeAt(i % k.length);
+            if (typeof TextDecoder !== 'undefined') return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+            let str = ''; for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+            return JSON.parse(decodeURIComponent(escape(str)));
+        }
         async function enterRoom(code, name, teacher) {
             // 방 정보는 차트 도구를 기다리는 동안 미리 요청해 둔다
             const joinP = apiGet('action=join&code=' + encodeURIComponent(code) + '&playerName=' + encodeURIComponent(name));
@@ -2310,7 +2319,7 @@
             if (!j || !j.ok || !j.room) SS.del('etm_session');
             if (!j || !j.ok || !j.room) throw userErr('방 코드 ' + code + '번 방을 찾을 수 없어요. 코드를 다시 확인해주세요.');
             const room = j.room;
-            const [scen, cfg] = await Promise.all([apiGet('stage=' + encodeURIComponent(room.stage)), _earlyConfig.then(c => c || apiGet('action=getConfig').catch(() => null))]);
+            const [scen, cfg] = await Promise.all([apiGet('stage=' + encodeURIComponent(room.stage) + '&enc=1').then(unscrambleScenario), _earlyConfig.then(c => c || apiGet('action=getConfig').catch(() => null))]);
             if (!Array.isArray(scen) || scen.length === 0) throw userErr((scen && scen.error) || '시나리오를 불러오지 못했습니다.');
             if (!cfg || cfg.error) throw userErr('게임 설정을 불러오지 못했습니다. 잠시 후 다시 눌러 주세요.');
             const epoch = Number(j.sig && j.sig.epoch) || 0;
