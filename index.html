@@ -1922,15 +1922,18 @@
             let goldProfit = 0;
             if (assets.Gold > 0 && rate.Gold > 0 && newGold > 0) { const nv = Math.floor(assets.Gold * newGold / rate.Gold + 1e-9); goldProfit = nv - assets.Gold; assets.Gold = nv; }
 
-            const stocks = []; let stockDiff = 0;
+            // 주식 평가손익: 자산(getTotalStockValue)과 같은 방식으로 정확히 계산한 뒤 반올림한다
+            //   (예전: 종목마다 가치를 먼저 버림 → 여러 종목을 들면 결산 합계가 실제 자산 변화보다 몇만 원 작게 나왔다)
+            const stocks = []; let stockExact = 0;
             availableStocks.forEach(st => {
                 const prevPrice = parseNum(cur[st + '_종가']) / 10000; const nextPrice = parseNum(next[st + '_종가']) / 10000;
                 if (ownedStocks[st] > 0) {
-                    const diff = Math.floor(ownedStocks[st] * nextPrice + 1e-9) - Math.floor(ownedStocks[st] * prevPrice + 1e-9);
-                    stockDiff += diff; stocks.push({ name: st, qty: ownedStocks[st], diff });
+                    const ex = ownedStocks[st] * (nextPrice - prevPrice);
+                    stockExact += ex; stocks.push({ name: st, qty: ownedStocks[st], diff: Math.round(ex + 1e-9) });
                 }
                 currentPrices[st] = nextPrice;
             });
+            const stockDiff = Math.round(stockExact + 1e-9);
 
             if (tradeThisTurn) totalTradeTurns++;
             tradeThisTurn = false;
