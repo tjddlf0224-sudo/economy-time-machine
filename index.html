@@ -696,6 +696,10 @@
         .theme-clean .stock-item:hover { background: var(--surface3); color: var(--text); }
         .theme-clean .stock-item.active { background: rgba(95,227,214,0.14); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
         .theme-clean .stock-item:hover .stock-desc, .theme-clean .stock-item.active .stock-desc { color: var(--muted); }
+        .halt-tag { display: inline-block; width: fit-content; align-self: flex-start; flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 6px; font-size: 0.68em; font-weight: 700; color: #fff; background: #8a2b2b; vertical-align: middle; }
+        .stock-item.halted { opacity: 0.75; }
+        #haltNotice { margin: 6px 0 0; padding: 7px 10px; border-radius: 8px; background: rgba(255,93,93,0.12); border: 1px solid rgba(255,93,93,0.4); color: #ffb3b3; font-size: 0.9em; }
+        #stockModal .btn-buy.is-halted, #stockModal .btn-sell.is-halted { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.8); }
         .theme-clean .chart-area { border-radius: 12px; }
         .theme-clean .trade-controls { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; }
         .theme-clean .btn-buy { background: var(--up); border-color: var(--up); color: #fff; }
@@ -1061,6 +1065,7 @@
                         <div>
                             <h2 id="selectedStockName" style="margin:0; color:white;">좌측에서 종목을 선택하세요</h2>
                             <p id="stockDescLine"></p>
+                            <p id="haltNotice" style="display:none;">⛔ <b>거래정지</b> — 이 회사 주식은 지금 거래가 멈춰 있어 이번 분기에는 사고팔 수 없어요. 가진 주식은 그대로 남습니다.</p>
                             <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #a4b0be;">현재가: <strong id="selectedStockPrice" style="color: #66fcf1; font-size: 1.3em;">0</strong> 만 원 | <span style="color:#bc13fe;">내 평단가: <span id="avgPriceDisplay">0</span> 만 원</span></p>
                         </div>
                         <div style="text-align: right; font-size: 1.2em;">내 보유수량: <strong id="ownedAmount" style="color: #ff4b4b;">0</strong> 주</div>
@@ -3098,6 +3103,28 @@
         }
 
         function initChart() { var options={series:[{data:[]}],chart:{type:'candlestick',height:300,width:'100%',toolbar:{show:false},animations:{enabled:false}},plotOptions:{candlestick:{colors:{upward:'#ff4b4b',downward:'#4b8bff'}}},xaxis:{type:'category',tickPlacement:'between',labels:{show:true,hideOverlappingLabels:false,style:{colors:'#000',fontSize:'11px',fontWeight:'bold'}}},yaxis:{tooltip:{enabled:true},labels:{style:{colors:'#000'},formatter:function(val){return val.toFixed(1)+"만";}}},grid:{borderColor:'#e0e0e0',padding:{bottom:10}},annotations:{yaxis:[],points:[]}}; chartInstance=new ApexCharts(document.querySelector("#chart"),options); chartInstance.render(); }
+        // ⛔ 거래정지: 시나리오 시트에 '종목_정지' 칸이 1인 분기에는 사고팔 수 없다 (예: 1997 J은행 — 실제 제일은행 99년 3분기부터 거래 정지)
+        function isHalted(st, idx) {
+            const d = allData[idx === undefined ? currentTurnIndex : idx];
+            return !!d && parseNum(d[st + '_정지']) === 1;
+        }
+        function refreshHaltMarks() {
+            availableStocks.forEach(st => {
+                const el = $id('btn-' + st); if (!el) return;
+                let tag = el.querySelector('.halt-tag'); const h = isHalted(st);
+                if (h && !tag) { tag = document.createElement('span'); tag.className = 'halt-tag'; tag.textContent = '거래정지'; el.appendChild(tag); }
+                if (!h && tag) tag.remove();
+                el.classList.toggle('halted', h);
+            });
+            const st = currentSelectedStock, h = !!st && isHalted(st);
+            document.querySelectorAll('#stockModal .btn-buy, #stockModal .btn-sell').forEach(b => { b.disabled = h; b.classList.toggle('is-halted', h); });
+            const note = $id('haltNotice'); if (note) note.style.display = h ? 'block' : 'none';
+        }
+        function haltedToast(st) {
+            if (!isHalted(st)) return false;
+            SFX.error(); toast('⛔ ' + st + '은(는) 거래정지 중이라 이번 분기에는 사고팔 수 없습니다.', 'err', 3000);
+            return true;
+        }
         function openStockModal() {
             if (lockedToast()) return;
             $id('stockModal').style.display='flex'; updateUI();
@@ -3110,6 +3137,7 @@
             document.querySelectorAll('.stock-item').forEach(el=>el.classList.remove('active')); const bt=$id('btn-'+key); if (bt) bt.classList.add('active');
             $id('selectedStockName').innerText=displayName; $id('selectedStockPrice').innerText=currentPrices[key].toFixed(1); $id('ownedAmount').innerText=ownedStocks[key]; $id('avgPriceDisplay').innerText=avgPrices[key].toFixed(1); updateAffordableShares();
             $id('stockDescLine').innerText = stockInfo(key).desc ? '💡 ' + stockInfo(key).desc : '';
+            refreshHaltMarks();
             let chartData=[];
             for(let i=0;i<=currentTurnIndex;i++){let d=allData[i];let open=parseNum(d[key+'_시가'])/10000;let high=parseNum(d[key+'_고가'])/10000;let low=parseNum(d[key+'_저가'])/10000;let close=parseNum(d[key+'_종가'])/10000;let dateLabel=String(d['연도/분기']||'');if(!dateLabel.trim())dateLabel=`과거 ${i-currentTurnIndex}턴`;if(open>0)chartData.push({x:dateLabel,y:[open,high,low,close]});}
             let pointsAnnotations=[]; tradeHistory[key].forEach(trade=>{pointsAnnotations.push({x:trade.x,y:trade.price,marker:{size:6,fillColor:trade.type==='B'?'#ff4b4b':'#4b8bff',strokeColor:'#fff',strokeWidth:2},label:{borderColor:trade.type==='B'?'#ff4b4b':'#4b8bff',style:{color:'#fff',background:trade.type==='B'?'#ff4b4b':'#4b8bff',fontSize:'12px',fontWeight:'bold'},text:trade.type}});});
@@ -3120,6 +3148,7 @@
             if(lockedToast())return;
             const st=currentSelectedStock;
             if(!st){SFX.error();toast('왼쪽에서 종목을 먼저 고르세요.','warn');return;}
+            if(haltedToast(st))return;
             const qty=readPosInt('tradeQuantity','수량'); if(qty===null)return;
             const price=currentPrices[st]; const cost=qty*price; const dateLabel=String(allData[currentTurnIndex]['연도/분기']);
             if(!(price>0)){SFX.error();toast('지금은 거래할 수 없는 종목입니다.','err');return;}
@@ -3136,6 +3165,7 @@
             if(lockedToast())return;
             const st=currentSelectedStock;
             if(!st){SFX.error();toast('왼쪽에서 종목을 먼저 고르세요.','warn');return;}
+            if(haltedToast(st))return;
             const qty=readPosInt('tradeQuantity','수량'); if(qty===null)return;
             const price=currentPrices[st]; const dateLabel=String(allData[currentTurnIndex]['연도/분기']);
             if(ownedStocks[st]<qty){SFX.error();toast('가진 주식이 부족합니다. (보유 ' + ownedStocks[st] + '주)','err');return;}
@@ -3268,6 +3298,7 @@
         function showTierUp(tier) { SFX.tier_up(); const ov=$id('tierUpOverlay'); $id('tierUpText').innerText='TIER UP! '+tier.icon; $id('tierUpSub').innerText=tier.label+' 요원으로 승격!'; ov.classList.add('active'); setTimeout(()=>ov.classList.remove('active'),2200); }
 
         function updateUI(triggerEffect) {
+            try { refreshHaltMarks(); } catch (e) {}
             $id('displayCash').innerText=Math.floor(playerCash);
             $id('modalCash').innerText=Math.floor(playerCash);
             $id('valBank').innerText=Math.floor(assets.Bank);
@@ -3275,7 +3306,7 @@
             $id('valGold').innerText=Math.floor(assets.Gold);
             const stockVal=getTotalStockValue(); $id('stockTotalValue').innerText=Math.floor(stockVal);
             const holdingsEl=$id('stockHoldingsList');
-            if(holdingsEl){ const held=availableStocks.filter(st=>ownedStocks[st]>0); if(held.length===0){holdingsEl.style.display='none';}else{holdingsEl.style.display='grid';holdingsEl.innerHTML=held.map(st=>{const val=Math.floor(ownedStocks[st]*currentPrices[st]);const avg=avgPrices[st]||0;const gain=avg>0?((currentPrices[st]-avg)/avg*100):0;const color=gain>=0?'#ff4b4b':'#4b8bff';const sign=gain>=0?'+':'';return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82em;padding:1px 2px;white-space:nowrap;"><span style="color:#c5c6c7;">' + escHtml(st) + ' <span style="color:#a4b0be;">' + ownedStocks[st] + '주</span></span><span><strong style="color:#4b8bff;">' + val + '만</strong> <span style="color:' + color + ';font-size:0.9em;">(' + sign + gain.toFixed(1) + '%)</span></span></div>';}).join('');} }
+            if(holdingsEl){ const held=availableStocks.filter(st=>ownedStocks[st]>0); if(held.length===0){holdingsEl.style.display='none';}else{holdingsEl.style.display='grid';holdingsEl.innerHTML=held.map(st=>{const val=Math.floor(ownedStocks[st]*currentPrices[st]);const avg=avgPrices[st]||0;const gain=avg>0?((currentPrices[st]-avg)/avg*100):0;const color=gain>=0?'#ff4b4b':'#4b8bff';const sign=gain>=0?'+':'';return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82em;padding:1px 2px;white-space:nowrap;"><span style="color:#c5c6c7;">' + escHtml(st) + (isHalted(st) ? ' <span class="halt-tag">거래정지</span>' : '') + ' <span style="color:#a4b0be;">' + ownedStocks[st] + '주</span></span><span><strong style="color:#4b8bff;">' + val + '만</strong> <span style="color:' + color + ';font-size:0.9em;">(' + sign + gain.toFixed(1) + '%)</span></span></div>';}).join('');} }
             const netWorth=netWorthNow(); $id('totalNetWorth').innerText=netFloor();
             const returnRate=((netWorth-initialCash)/initialCash)*100; const rateElem=$id('totalReturnRate');
             if(returnRate>0){rateElem.innerText='(+'+returnRate.toFixed(1)+'%)';rateElem.style.color='#ff4b4b';}
